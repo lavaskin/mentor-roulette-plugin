@@ -29,6 +29,10 @@ jobs:
         with:
           # The whole history, to check the tag is on main
           fetch-depth: 0
+          # The last step pushes repo.json to main, whose ruleset only deploy keys and admins can bypass:
+          # GITHUB_TOKEN can't, and GitHub Actions can't be a bypass actor on a personal repository.
+          # See "Releasing" in the README.
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - name: Check the tag
         run: |
