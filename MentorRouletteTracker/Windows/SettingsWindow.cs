@@ -41,8 +41,9 @@ public sealed class SettingsWindow : Window
 		ImGui.Spacing();
 		DrawOptions();
 
+		// Only for trying the plugin against a dev copy of the site
 		ImGui.Spacing();
-		if (ImGui.CollapsingHeader("Advanced"))
+		if (_tracker.IsDev && ImGui.CollapsingHeader("Advanced (dev builds only)"))
 		{
 			DrawServerAddress();
 		}

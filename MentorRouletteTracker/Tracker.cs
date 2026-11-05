@@ -44,6 +44,18 @@ internal sealed class Tracker : IDisposable
 			() => _pluginInterface.SavePluginConfig(Config),
 			exception => _log.Error(exception, "Couldn't save the settings"));
 
+		// Only a dev build can point at another site. A dev build's settings carry over to the installed plugin, so
+		// the installed one goes back to the real site, dropping the token, which was for the other one.
+		IsDev = pluginInterface.IsDev;
+		if (!IsDev && Config.ServerAddress != ServerAddress.Default)
+		{
+			_log.Information("Went back to {Server} from {Other}, which only dev builds can use", ServerAddress.Default, Config.ServerAddress);
+			Config.ServerAddress = ServerAddress.Default;
+			Config.Token = null;
+			Config.Username = null;
+			SaveConfig();
+		}
+
 		Log = new RunLog(store.LoadRuns());
 		_runsSaver = new BackgroundSaver(
 			() => store.SaveRuns(Log.Runs),
@@ -61,6 +73,11 @@ internal sealed class Tracker : IDisposable
 	public Uploader Uploader { get; }
 	public RunKeeper Keeper { get; }
 	public GameNames Names { get; }
+
+	/// <summary>
+	/// Loaded as a dev plugin (from Dev Plugin Locations), not installed from the plugin's repository
+	/// </summary>
+	public bool IsDev { get; }
 
 	public bool IsConnected => RunKeeper.ConnectionFor(Config) is not null;
 
