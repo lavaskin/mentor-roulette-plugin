@@ -14,6 +14,10 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
 | `MentorRouletteTracker.Core` | Everything that doesn't need the game. **No Dalamud, Lumina or FFXIVClientStructs references**, so it can be unit tested. Logic goes here whenever it can. |
 | `MentorRouletteTracker.Core.Tests` | xUnit tests for `Core` |
 
+- **How it fits together:**
+  - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, wipe, duty complete, logout) to `Core.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute.
+  - `Tracker` (plugin) hands each finished run to `Core.RunKeeper`, which keeps it in `RunLog` (saved by `RunStore`) and uploads it through `Uploader` and `Api.MentorApiClient` if auto-upload's on.
+  - The upload rules (oldest first, what holds up later runs, 401 and 400) are in `Uploader`'s summary.
 - **Style:** tabs in C#, file-scoped namespaces, `_camelCase` private instance fields and PascalCase static ones, like the API.
 - **Windows** use Dalamud's `Window` and `WindowSystem`. **Commands:** `/mrt` (runs) and `/mrt config` (settings).
 - **Nothing blocks the game's frame:** network calls and file writes run off the framework thread.
