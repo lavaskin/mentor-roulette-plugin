@@ -165,6 +165,41 @@ public class RunRecorderTests
 	}
 
 	[Fact]
+	public void APopTheRecorderMissed_IsTakenFromTheDutyFinderOnArrival()
+	{
+		// The plugin was reloaded between the pop and arriving, so it never heard the pop
+		var run = new RunRecorder();
+		run.Arrived(Vault, throughDutyFinder: true, At(20), new AcceptedPop(IsMentorRoulette: true, InProgress: false));
+		run.Commenced(At(30));
+
+		var finished = run.Completed(At(130));
+
+		Assert.Equal(Vault, finished!.GameContentId);
+		Assert.False(finished.Replacement);
+		Assert.Equal(100, finished.DurationSeconds);
+	}
+
+	[Fact]
+	public void APopTakenFromTheDutyFinder_CanBeAReplacement()
+	{
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20), new AcceptedPop(IsMentorRoulette: true, InProgress: true));
+		_recorder.LoadedIn(At(25));
+
+		var run = _recorder.Completed(At(125));
+
+		Assert.True(run!.Replacement);
+		Assert.Equal(100, run.DurationSeconds);
+	}
+
+	[Fact]
+	public void AnotherRoulette_InTheDutyFinder_RecordsNothing()
+	{
+		_recorder.Arrived(Sastasha, throughDutyFinder: true, At(20), new AcceptedPop(IsMentorRoulette: false, InProgress: false));
+
+		Assert.False(_recorder.InDuty);
+	}
+
+	[Fact]
 	public void AnotherRoulette_RecordsNothing()
 	{
 		_recorder.Popped(isMentorRoulette: false, inProgress: false, At(0));

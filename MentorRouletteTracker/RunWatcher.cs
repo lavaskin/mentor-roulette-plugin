@@ -119,7 +119,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	private void OnZoneInit(ZoneInitEventArgs args)
 	{
-		OnFramework(() => Arrived(args.ContentFinderCondition.RowId));
+		OnFramework(() => Arrived(args.ContentFinderCondition.RowId, ReadAcceptedPop()));
 	}
 
 	private void OnLogout(int type, int code)
@@ -213,11 +213,29 @@ internal sealed unsafe class RunWatcher : IDisposable
 			TaskScheduler.Default);
 	}
 
-	private void Arrived(uint contentFinderConditionId)
+	private void Arrived(uint contentFinderConditionId, AcceptedPop? acceptedPop = null)
 	{
 		var throughDutyFinder = ThroughDutyFinder();
-		_log.Debug("Arrived in duty {Duty}, through the duty finder {ThroughDutyFinder}", contentFinderConditionId, throughDutyFinder);
-		Finished(_recorder.Arrived(contentFinderConditionId, throughDutyFinder, DateTime.UtcNow));
+		_log.Debug("Arrived in duty {Duty}, through the duty finder {ThroughDutyFinder}, accepted pop {AcceptedPop}", contentFinderConditionId, throughDutyFinder, acceptedPop?.ToString() ?? "none");
+		Finished(_recorder.Arrived(contentFinderConditionId, throughDutyFinder, DateTime.UtcNow, acceptedPop));
+	}
+
+	/// <summary>
+	/// The pop the duty finder holds while it's accepted: the player's on their way into what it popped. Not once
+	/// they're in it (in content), so a zone change inside a duty, or after clearing it, can't start a run.
+	/// </summary>
+	private static AcceptedPop? ReadAcceptedPop()
+	{
+		var finder = ContentsFinder.Instance();
+		if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.Accepted)
+		{
+			return null;
+		}
+
+		var popped = finder->QueueInfo.PoppedQueueEntry;
+		return new AcceptedPop(
+			popped.ContentType == ContentsType.Roulette && popped.Id == MentorRouletteId,
+			finder->QueueInfo.PoppedContentIsInProgress);
 	}
 
 	/// <summary>

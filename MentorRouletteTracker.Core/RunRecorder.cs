@@ -60,9 +60,14 @@ public sealed class RunRecorder
 	/// The duty finder put them there: its queue is past the pop. False rules out a duty entered any other way just
 	/// after a pop that was declined.
 	/// </param>
-	public Run? Arrived(uint contentFinderConditionId, bool throughDutyFinder, DateTime at)
+	/// <param name="acceptedPop">
+	/// The pop the duty finder holds as accepted, read on arriving in a zone: the player's on their way in from it.
+	/// Used when there's no pop from <see cref="Popped"/>, which the plugin forgets if it's reloaded (or installed)
+	/// between the pop and arriving.
+	/// </param>
+	public Run? Arrived(uint contentFinderConditionId, bool throughDutyFinder, DateTime at, AcceptedPop? acceptedPop = null)
 	{
-		var pop = _pop;
+		var pop = _pop ?? (acceptedPop is { IsMentorRoulette: true } accepted ? new Pop(accepted.InProgress, at) : null);
 		_pop = null;
 
 		Run? finished = null;
@@ -286,3 +291,10 @@ public sealed class RunRecorder
 		public required DateTime LastSeenAt { get; set; }
 	}
 }
+
+/// <summary>
+/// The duty finder's pop, as it holds it once accepted
+/// </summary>
+/// <param name="IsMentorRoulette">It's the Mentor Roulette (a roulette, <c>ContentRoulette</c> 9)</param>
+/// <param name="InProgress">It's a duty in progress, so the player is a replacement</param>
+public sealed record AcceptedPop(bool IsMentorRoulette, bool InProgress);
