@@ -162,8 +162,7 @@ public sealed class SettingsWindow : Window
 
 	private void DrawServerAddress()
 	{
-		ImGui.TextWrapped("The site to upload to. Change it only to try the plugin against another copy of the site, "
-			+ "like a dev server. The game under Wine reaches localhost on the same PC.");
+		ImGui.TextWrapped("The site the plugin uploads to.");
 
 		var connected = _tracker.IsConnected;
 		ImGui.BeginDisabled(connected);
