@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="MentorRouletteTracker/MentorRouletteTracker.csproj">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="MentorRouletteTracker.Core/MentorRouletteTracker.Core.csproj" />
+  <Project Path="MentorRouletteTracker.Core.Tests/MentorRouletteTracker.Core.Tests.csproj" />
+</Solution>

@@ -1,0 +1,123 @@
+name: Link ticket
+
+# Links each pull request to its ticket, so it shows in the ticket's Development section. GitHub only
+# does that itself for closing keywords in pull requests into the default branch, and ours go into dev.
+#
+# The ticket comes from the branch name, feature/<ticket>-<desc> (older branches have a slash after it):
+#   api-<n>  ffxiv_api#<n>
+#   mrt-<n>  mentor-roulette-tracker#<n>
+#   mpt-<n>  ffxiv_makeplace_price_tool#<n>
+#   mrp-<n>  mentor-roulette-plugin#<n>
+#   <n>      mentor-roulette-tracker#<n>, a cross-repo ticket
+# Other branches are skipped. A ticket that doesn't exist, is closed, or is a pull request fails the check.
+#
+# TICKET_LINK_TOKEN is a fine-grained personal access token, because GITHUB_TOKEN can't reach a ticket in
+# another repo. It covers ffxiv_api, mentor-roulette-tracker and mentor-roulette-plugin, with Issues read and
+# write and Pull requests read, and doesn't expire. Each of them holds it as a secret.
+#
+# The same file is in ffxiv_api, mentor-roulette-tracker and mentor-roulette-plugin. Keep them identical.
+
+on:
+  pull_request:
+    branches: [dev]
+    # synchronize because workflows don't run while a pull request has a merge conflict, so one opened
+    # with a conflict is linked by the push that fixes it. edited catches a base changed to dev.
+    types: [opened, reopened, edited, synchronize]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  link:
+    name: Link to ticket
+    # Forks don't get the token
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Link
+        env:
+          GH_TOKEN: ${{ secrets.TICKET_LINK_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_ID: ${{ github.event.pull_request.node_id }}
+        run: |
+          set -euo pipefail
+          err="$RUNNER_TEMP/gh-error"
+
+          report() { echo "$1"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          fail() { echo "::error::$1"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          gh_error() { sed 's/^gh: //; s/\.$//' "$err"; }
+
+          pattern='^feature/((api|mrt|mpt|mrp)-)?([0-9]+)[-/].'
+          if [[ ! "$BRANCH" =~ $pattern ]]; then
+            report "Skipped: \`$BRANCH\` isn't named \`feature/<ticket>-<desc>\`, so it has no ticket to link."
+            exit 0
+          fi
+          case "${BASH_REMATCH[2]}" in
+            api) repo=ffxiv_api ;;
+            mpt) repo=ffxiv_makeplace_price_tool ;;
+            mrp) repo=mentor-roulette-plugin ;;
+            *) repo=mentor-roulette-tracker ;;
+          esac
+          number=$((10#${BASH_REMATCH[3]}))
+          ticket="$OWNER/$repo#$number"
+
+          renew="Make a new fine-grained token for ffxiv_api, mentor-roulette-tracker and mentor-roulette-plugin (Issues read and write, Pull requests read), and set it as TICKET_LINK_TOKEN in each of them."
+          if [[ -z "$GH_TOKEN" ]]; then
+            fail "The TICKET_LINK_TOKEN secret isn't set. $renew"
+          fi
+          if ! gh api graphql -f query='{ viewer { login } }' > /dev/null 2> "$err"; then
+            if grep -q 'HTTP 401' "$err"; then
+              fail "GitHub rejected TICKET_LINK_TOKEN as bad credentials: it wasn't saved correctly, or it's expired or been revoked. $renew"
+            fi
+            fail "Couldn't reach GitHub: $(gh_error)"
+          fi
+
+          # shellcheck disable=SC2016 # $owner and the rest are GraphQL variables
+          query='query($owner: String!, $repo: String!, $number: Int!) {
+            repository(owner: $owner, name: $repo) {
+              issueOrPullRequest(number: $number) {
+                __typename
+                ... on Issue {
+                  id
+                  state
+                  url
+                  closedByPullRequestsReferences(first: 100, includeClosedPrs: true) { nodes { id } }
+                }
+              }
+            }
+          }'
+          if ! found=$(gh api graphql -f query="$query" -f owner="$OWNER" -f repo="$repo" -F number="$number" \
+              --jq '.data.repository.issueOrPullRequest' 2> "$err"); then
+            fail "Couldn't find $ticket, from the branch name: $(gh_error). Check the branch's ticket number, and that TICKET_LINK_TOKEN covers $repo."
+          fi
+          if [[ "$(jq -r '.__typename' <<< "$found")" != Issue ]]; then
+            fail "$ticket, from the branch name, is a pull request, not a ticket. Check the branch's ticket number."
+          fi
+          url=$(jq -r '.url' <<< "$found")
+          if [[ "$(jq -r '.state' <<< "$found")" != OPEN ]]; then
+            fail "$ticket, from the branch name, is closed: $url"
+          fi
+          if jq -e --arg pr "$PR_ID" 'any(.closedByPullRequestsReferences.nodes[]; .id == $pr)' <<< "$found" > /dev/null; then
+            report "Already linked to $ticket: $url"
+            exit 0
+          fi
+
+          # shellcheck disable=SC2016 # GraphQL variables, as above
+          mutation='mutation($issue: ID!, $pr: ID!) {
+            addCloseIssueReferences(input: { issueId: $issue, pullRequestIds: [$pr] }) {
+              issue { closedByPullRequestsReferences(first: 100, includeClosedPrs: true) { nodes { id } } }
+            }
+          }'
+          if ! linked=$(gh api graphql -f query="$mutation" -f issue="$(jq -r '.id' <<< "$found")" -f pr="$PR_ID" \
+              --jq '.data.addCloseIssueReferences.issue.closedByPullRequestsReferences.nodes' 2> "$err"); then
+            fail "Couldn't link $ticket: $(gh_error)"
+          fi
+          if ! jq -e --arg pr "$PR_ID" 'any(.[]; .id == $pr)' <<< "$linked" > /dev/null; then
+            fail "GitHub accepted the link to $ticket, but the ticket doesn't list this pull request: $url"
+          fi
+          report "Linked to $ticket: $url"
