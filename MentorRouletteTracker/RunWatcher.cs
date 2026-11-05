@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.DutyState;
@@ -8,7 +9,7 @@ using FFXIVClientStructs.FFXIV.Client.Enums;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Lumina.Excel.Sheets;
+using ContentFinderCondition = Lumina.Excel.Sheets.ContentFinderCondition;
 using MentorRouletteTracker.Core;
 
 namespace MentorRouletteTracker;
@@ -97,7 +98,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 	// Dalamud raises CfPop off the framework thread
 	private void OnCfPop(ContentFinderCondition _)
 	{
-		_framework.RunOnFrameworkThread(() =>
+		OnFramework(() =>
 		{
 			var finder = ContentsFinder.Instance();
 			if (finder == null)
@@ -116,12 +117,12 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	private void OnZoneInit(ZoneInitEventArgs args)
 	{
-		_framework.RunOnFrameworkThread(() => Arrived(args.ContentFinderCondition.RowId));
+		OnFramework(() => Arrived(args.ContentFinderCondition.RowId));
 	}
 
 	private void OnLogout(int type, int code)
 	{
-		_framework.RunOnFrameworkThread(() =>
+		OnFramework(() =>
 		{
 			_recorder.LoggedOut(DateTime.UtcNow);
 			Save();
@@ -130,7 +131,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	private void OnDutyWiped(IDutyStateEventArgs args)
 	{
-		_framework.RunOnFrameworkThread(() =>
+		OnFramework(() =>
 		{
 			_recorder.Wiped();
 			Save();
@@ -139,7 +140,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	private void OnDutyCompleted(IDutyStateEventArgs args)
 	{
-		_framework.RunOnFrameworkThread(() => Finished(_recorder.Completed(DateTime.UtcNow)));
+		OnFramework(() => Finished(_recorder.Completed(DateTime.UtcNow)));
 	}
 
 	private void OnUpdate(IFramework framework)
@@ -176,6 +177,19 @@ internal sealed unsafe class RunWatcher : IDisposable
 		{
 			Save();
 		}
+	}
+
+	/// <summary>
+	/// Runs <paramref name="action"/> on the framework thread (straight away if already on it), since the recorder
+	/// isn't thread safe and the game's memory is read there
+	/// </summary>
+	private void OnFramework(Action action)
+	{
+		_framework.RunOnFrameworkThread(action).ContinueWith(
+			done => _log.Error(done.Exception!, "Couldn't handle a game event"),
+			CancellationToken.None,
+			TaskContinuationOptions.OnlyOnFaulted,
+			TaskScheduler.Default);
 	}
 
 	private void Arrived(uint contentFinderConditionId)

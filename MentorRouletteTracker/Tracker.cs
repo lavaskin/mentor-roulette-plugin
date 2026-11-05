@@ -53,7 +53,7 @@ internal sealed class Tracker : IDisposable
 		Uploader = new Uploader(Log, api, () => RunKeeper.ConnectionFor(Config));
 		Keeper = new RunKeeper(Log, Uploader, Config);
 
-		Background(Keeper.ResumeAsync(_stopping.Token), "upload the runs waiting");
+		Background(() => Keeper.ResumeAsync(_stopping.Token), "upload the runs waiting");
 	}
 
 	public Configuration Config { get; }
@@ -86,7 +86,7 @@ internal sealed class Tracker : IDisposable
 		var job = Names.Job(run.GameClassJobId);
 		var outcome = Keeper.KeepAsync(run, _stopping.Token);
 
-		Background(SayAsync(), "upload the run that ended");
+		Background(SayAsync, "upload the run that ended");
 
 		async Task SayAsync()
 		{
@@ -103,12 +103,12 @@ internal sealed class Tracker : IDisposable
 	/// </summary>
 	public void UploadAll()
 	{
-		Background(Uploader.UploadAsync(_stopping.Token), "upload the runs");
+		Background(() => Uploader.UploadAsync(_stopping.Token), "upload the runs");
 	}
 
 	public void Retry(Guid id)
 	{
-		Background(Uploader.RetryAsync(id, _stopping.Token), "retry a run");
+		Background(() => Uploader.RetryAsync(id, _stopping.Token), "retry a run");
 	}
 
 	/// <summary>
@@ -140,9 +140,12 @@ internal sealed class Tracker : IDisposable
 		SaveConfig();
 	}
 
-	private void Background(Task task, string what)
+	/// <summary>
+	/// Runs <paramref name="work"/> on the thread pool, so even the start of a request stays off the framework thread
+	/// </summary>
+	private void Background(Func<Task> work, string what)
 	{
-		task.ContinueWith(
+		Task.Run(work).ContinueWith(
 			done => _log.Error(done.Exception!, "Couldn't {What}", what),
 			CancellationToken.None,
 			TaskContinuationOptions.OnlyOnFaulted,
