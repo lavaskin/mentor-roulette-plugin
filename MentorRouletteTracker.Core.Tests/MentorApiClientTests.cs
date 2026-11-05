@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using MentorRouletteTracker.Core.Api;
+using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Core.Tests;
 

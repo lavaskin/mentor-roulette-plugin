@@ -1,3 +1,6 @@
+using MentorRouletteTracker.Core.Models;
+using MentorRouletteTracker.Core.Text;
+
 namespace MentorRouletteTracker.Core.Tests;
 
 public class ChatLineTests

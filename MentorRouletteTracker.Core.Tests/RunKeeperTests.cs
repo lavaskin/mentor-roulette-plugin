@@ -1,4 +1,7 @@
 using MentorRouletteTracker.Core.Api;
+using MentorRouletteTracker.Core.Models;
+using MentorRouletteTracker.Core.Storage;
+using MentorRouletteTracker.Core.Uploading;
 
 namespace MentorRouletteTracker.Core.Tests;
 

@@ -1,3 +1,5 @@
+using MentorRouletteTracker.Core.Models;
+
 namespace MentorRouletteTracker.Core.Api;
 
 /// <summary>

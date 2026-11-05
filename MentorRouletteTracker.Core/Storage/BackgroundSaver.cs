@@ -1,4 +1,4 @@
-namespace MentorRouletteTracker.Core;
+namespace MentorRouletteTracker.Core.Storage;
 
 /// <summary>
 /// Runs a save off the calling thread, so file writes never hold up the game's frame. Saves run one at a time, and

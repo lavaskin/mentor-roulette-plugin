@@ -1,6 +1,6 @@
 using System;
 using Dalamud.Configuration;
-using MentorRouletteTracker.Core;
+using MentorRouletteTracker.Core.Uploading;
 
 namespace MentorRouletteTracker;
 

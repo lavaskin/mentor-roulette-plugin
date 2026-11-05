@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace MentorRouletteTracker.Core;
+namespace MentorRouletteTracker.Core.Text;
 
 /// <summary>
 /// Times written the way the site writes them (its <c>formatDuration</c>), so a run reads the same in the plugin

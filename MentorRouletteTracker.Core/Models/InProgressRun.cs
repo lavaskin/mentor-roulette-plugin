@@ -1,4 +1,4 @@
-namespace MentorRouletteTracker.Core;
+namespace MentorRouletteTracker.Core.Models;
 
 /// <summary>
 /// The run in progress as it's saved to disk, so a crash loses at most the time since it was last saved. When the

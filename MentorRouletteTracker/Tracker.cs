@@ -3,8 +3,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using MentorRouletteTracker.Core;
 using MentorRouletteTracker.Core.Api;
+using MentorRouletteTracker.Core.Models;
+using MentorRouletteTracker.Core.Storage;
+using MentorRouletteTracker.Core.Text;
+using MentorRouletteTracker.Core.Uploading;
 
 namespace MentorRouletteTracker;
 

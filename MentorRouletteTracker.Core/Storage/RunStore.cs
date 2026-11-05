@@ -1,7 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MentorRouletteTracker.Core.Models;
 
-namespace MentorRouletteTracker.Core;
+namespace MentorRouletteTracker.Core.Storage;
 
 /// <summary>
 /// The plugin's runs on disk, as JSON in its config directory: <c>runs.json</c> (every run, kept forever) and

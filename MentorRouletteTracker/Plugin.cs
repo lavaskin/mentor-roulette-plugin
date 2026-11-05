@@ -5,8 +5,8 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using MentorRouletteTracker.Core;
 using MentorRouletteTracker.Core.Api;
+using MentorRouletteTracker.Core.Storage;
 using MentorRouletteTracker.Windows;
 
 namespace MentorRouletteTracker;

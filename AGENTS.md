@@ -1,6 +1,6 @@
 # AGENTS.md - mentor-roulette-plugin
 
-A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and logs it to the user's account on Mentor Roulette Tracker (https://mentor.lavask.in). Its companions are the site (`lavaskin/mentor-roulette-tracker`) and its API (`lavaskin/ffxiv_api`), which this talks to.
+A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and logs it to the user's account on Mentor Roulette Tracker (<https://mentor.lavask.in>). Its companions are the site (`lavaskin/mentor-roulette-tracker`) and its API (`lavaskin/ffxiv_api`), which this talks to.
 
 ## The one rule
 
@@ -9,14 +9,21 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
 ## Layout
 
 | Project | What |
-|---|---|
+| --- | --- |
 | `MentorRouletteTracker` | The plugin, on `Dalamud.NET.Sdk` (Dalamud API 15). Only turns Dalamud's events into plain events for `Core`, and draws the windows. |
 | `MentorRouletteTracker.Core` | Everything that doesn't need the game. **No Dalamud, Lumina or FFXIVClientStructs references**, so it can be unit tested. Logic goes here whenever it can. |
 | `MentorRouletteTracker.Core.Tests` | xUnit tests for `Core` |
 
+- **`Core`'s folders,** each its own namespace (`Core.Models`, and so on):
+  - `Models`: plain records and enums (`Run`, `InProgressRun`, `RunOutcome`, `AcceptedPop`), one type per file, with its enum beside it.
+  - `Recording`: `RunRecorder`.
+  - `Storage`: `RunLog` (in memory), `RunStore` (on disk), `BackgroundSaver`.
+  - `Uploading`: `RunKeeper`, `Uploader`, `IUploadSettings`.
+  - `Api`: talking to the site.
+  - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `Names`).
 - **How it fits together:**
-  - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, loaded in, duty commenced, wipe, duty complete, logout) to `Core.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute.
-  - `Tracker` (plugin) hands each finished run to `Core.RunKeeper`, which keeps it in `RunLog` (saved by `RunStore`) and uploads it through `Uploader` and `Api.MentorApiClient` if auto-upload's on.
+  - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, loaded in, duty commenced, wipe, duty complete, logout) to `Core.Recording.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute.
+  - `Tracker` (plugin) hands each finished run to `Core.Uploading.RunKeeper`, which keeps it in `RunLog` (saved by `RunStore`) and uploads it through `Uploader` and `Api.MentorApiClient` if auto-upload's on.
   - The upload rules (oldest first, what holds up later runs, 401 and 400) are in `Uploader`'s summary.
 - **Style:** tabs in C#, file-scoped namespaces, `_camelCase` private instance fields and PascalCase static ones, like the API.
 - **Windows** use Dalamud's `Window` and `WindowSystem`. **Commands:** `/mrt` (runs) and `/mrt config` (settings).
@@ -26,16 +33,17 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
 ## Words
 
 The same words as the site, for the same things:
+
 - a **run**, which is **cleared** or not
 - a **replacement** (joined a duty in progress)
 - **wipes**
-- times written like the site's: "55m 24s", "1h 30m" (`Core.Duration.Format`)
+- times written like the site's: "55m 24s", "1h 30m" (`Core.Text.Duration.Format`)
 - Sentence case everywhere.
 
 ## Commands
 
 | Task | Command |
-|---|---|
+| --- | --- |
 | Build | `dotnet build` (`-c Release` for what releases ship) |
 | Tests | `dotnet test` |
 
@@ -63,5 +71,5 @@ In the README (Releasing). The Release workflow runs on a `vX.Y.Z` tag on `main`
 ## Rules
 
 - **Never change `<Version>`** in `MentorRouletteTracker.csproj`: lavaskin bumps it when releasing.
-- **Custom repository only.** The plugin is never submitted to Dalamud's official repository (DalamudPluginsD17), so its rules on review and AI use don't apply. Dalamud's plugin restrictions and its rules for talking to a backend server still do (https://dalamud.dev/plugin-publishing/restrictions, https://dalamud.dev/plugin-development/technical-considerations).
+- **Custom repository only.** The plugin is never submitted to Dalamud's official repository (DalamudPluginsD17), so its rules on review and AI use don't apply. Dalamud's plugin restrictions and its rules for talking to a backend server still do (<https://dalamud.dev/plugin-publishing/restrictions>, <https://dalamud.dev/plugin-development/technical-considerations>).
 - **Tickets and branches:** tickets are on the FFXIV board, and branches are `feature/mrp-<n>-<short-desc>` off `dev`.

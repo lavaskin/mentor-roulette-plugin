@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace MentorRouletteTracker.Core;
+namespace MentorRouletteTracker.Core.Text;
 
 /// <summary>
 /// Dates written like the site writes a day and its time: "Nov 5, 2026, 3:12 AM"

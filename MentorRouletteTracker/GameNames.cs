@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
-using MentorRouletteTracker.Core;
+using MentorRouletteTracker.Core.Text;
 
 namespace MentorRouletteTracker;
 

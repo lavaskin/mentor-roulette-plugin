@@ -1,3 +1,6 @@
+using MentorRouletteTracker.Core.Models;
+using MentorRouletteTracker.Core.Recording;
+
 namespace MentorRouletteTracker.Core.Tests;
 
 public class RunRecorderTests

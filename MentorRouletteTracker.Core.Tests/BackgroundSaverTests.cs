@@ -1,3 +1,5 @@
+using MentorRouletteTracker.Core.Storage;
+
 namespace MentorRouletteTracker.Core.Tests;
 
 public class BackgroundSaverTests

@@ -1,4 +1,6 @@
-namespace MentorRouletteTracker.Core;
+using MentorRouletteTracker.Core.Models;
+
+namespace MentorRouletteTracker.Core.Storage;
 
 /// <summary>
 /// Every run the plugin has recorded, newest first. Thread safe: the windows read it each frame while uploads

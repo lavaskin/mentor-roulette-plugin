@@ -1,4 +1,6 @@
-namespace MentorRouletteTracker.Core;
+using MentorRouletteTracker.Core.Models;
+
+namespace MentorRouletteTracker.Core.Text;
 
 /// <summary>
 /// The line in chat when a run ends: what was recorded, and what happened to it.

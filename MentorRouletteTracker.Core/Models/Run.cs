@@ -1,4 +1,4 @@
-namespace MentorRouletteTracker.Core;
+namespace MentorRouletteTracker.Core.Models;
 
 public enum RunStatus
 {
