@@ -76,6 +76,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_clientState.CfPop += OnCfPop;
 		_clientState.ZoneInit += OnZoneInit;
 		_clientState.Logout += OnLogout;
+		_dutyState.DutyStarted += OnDutyStarted;
 		_dutyState.DutyWiped += OnDutyWiped;
 		_dutyState.DutyCompleted += OnDutyCompleted;
 		_framework.Update += OnUpdate;
@@ -86,6 +87,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_clientState.CfPop -= OnCfPop;
 		_clientState.ZoneInit -= OnZoneInit;
 		_clientState.Logout -= OnLogout;
+		_dutyState.DutyStarted -= OnDutyStarted;
 		_dutyState.DutyWiped -= OnDutyWiped;
 		_dutyState.DutyCompleted -= OnDutyCompleted;
 		_framework.Update -= OnUpdate;
@@ -129,6 +131,18 @@ internal sealed unsafe class RunWatcher : IDisposable
 		});
 	}
 
+	// "Duty commenced", which starts the clock like the game's completion time. It doesn't fire for a replacement.
+	private void OnDutyStarted(IDutyStateEventArgs args)
+	{
+		OnFramework(() =>
+		{
+			if (_recorder.Commenced(DateTime.UtcNow))
+			{
+				Save();
+			}
+		});
+	}
+
 	private void OnDutyWiped(IDutyStateEventArgs args)
 	{
 		OnFramework(() =>
@@ -152,19 +166,26 @@ internal sealed unsafe class RunWatcher : IDisposable
 			&& !_condition[ConditionFlag.BetweenAreas51];
 
 		// Logout isn't raised on every way out of the game, and the clock mustn't run while they're gone
-		if (_recorder.IsRunning && !_clientState.IsLoggedIn)
+		if (_recorder.InDuty && !_clientState.IsLoggedIn)
 		{
 			_recorder.LoggedOut(now);
 			Save();
 		}
 
-		// A paused run (logged out, or saved before the plugin started) carries on or ends once the player's in the
-		// world again. Zone changes say where they arrive too, but on logging in that can come before the game
-		// counts them as logged in.
-		if (settled && (!_lookedOnStart || _recorder.IsPaused))
+		// A run the player's away from (logged out, or saved before the plugin started) carries on or ends once
+		// they're in the world again. Zone changes say where they arrive too, but on logging in that can come before
+		// the game counts them as logged in.
+		if (settled && (!_lookedOnStart || _recorder.IsAway))
 		{
 			_lookedOnStart = true;
 			Arrived(GameMain.Instance()->CurrentContentFinderConditionId);
+		}
+
+		// A replacement's clock, or one back from a disconnect, starts once they've loaded in. Dalamud also counts the
+		// duty as started on the first combat in it, in case "Duty commenced" was missed.
+		if (settled && (_recorder.LoadedIn(now) || (_dutyState.IsDutyStarted && _recorder.Commenced(now))))
+		{
+			Save();
 		}
 
 		if (_recorder.NeedsJob && settled && _playerState.ClassJob.RowId != 0)
@@ -173,7 +194,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 			Save();
 		}
 
-		if (_recorder.IsRunning && now - _lastSave >= SaveEvery)
+		if (_recorder.InDuty && now - _lastSave >= SaveEvery)
 		{
 			Save();
 		}

@@ -48,7 +48,7 @@ Without connecting, it still records every run and keeps it, so you can connect 
 - Disconnecting and coming back to the same duty is one run, and the time you were away doesn't count.
 - If the game crashes and you don't get back in, the run is recorded as not cleared the next time you log in.
 
-Your time is your own time in the duty: from arriving (as a replacement too) to the duty-complete message, or to leaving if it wasn't cleared.
+Your time is your own time in the duty, to the duty-complete message, or to leaving if it wasn't cleared. It starts at "Duty commenced", so a cleared run's time matches the game's completion time. As a replacement, it starts once you've loaded in. Loading screens, and time disconnected, don't count.
 
 ### What it keeps and sends
 

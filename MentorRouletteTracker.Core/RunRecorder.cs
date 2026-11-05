@@ -5,8 +5,12 @@ namespace MentorRouletteTracker.Core;
 /// returns the run it finished, if any.
 /// <para>
 /// A run starts when the player arrives in a duty from a Mentor Roulette pop, and ends at the duty-complete message
-/// (cleared) or when they arrive anywhere else (not cleared). Its time is the player's own: the clock stops while
-/// they're logged out, and starts again when they're back in the duty.
+/// (cleared) or when they arrive anywhere else (not cleared).
+/// </para>
+/// <para>
+/// Its time is the player's own, and matches the game's completion time for a normal run: the clock starts at "Duty
+/// commenced". A replacement joins after that, so their clock starts once they've loaded in. The clock stops while
+/// they're logged out, and starts again once they've loaded back into the duty. Loading screens never count.
 /// </para>
 /// Not thread safe: the plugin calls it from the game's framework thread only.
 /// </summary>
@@ -22,20 +26,20 @@ public sealed class RunRecorder
 	private Current? _current;
 
 	/// <summary>
-	/// A run is in progress, with the player in its duty
+	/// A run is in progress, with the player in its duty (its clock may not have started yet)
 	/// </summary>
-	public bool IsRunning => _current?.RunningSince is not null;
+	public bool InDuty => _current is { Away: false };
 
 	/// <summary>
-	/// A run is in progress, with its clock stopped: the player logged out, or the plugin restored it on starting.
+	/// A run is in progress while the player's away from it: they logged out, or the plugin restored it on starting.
 	/// The next arrival carries it on or ends it.
 	/// </summary>
-	public bool IsPaused => _current is { RunningSince: null };
+	public bool IsAway => _current is { Away: true };
 
 	/// <summary>
 	/// The run in progress, with the player in its duty, doesn't have the player's job yet
 	/// </summary>
-	public bool NeedsJob => _current is { GameClassJobId: 0, RunningSince: not null };
+	public bool NeedsJob => _current is { GameClassJobId: 0, Away: false };
 
 	/// <summary>
 	/// The duty finder popped. Only a Mentor Roulette pop can start a run, and any other replaces it.
@@ -48,7 +52,8 @@ public sealed class RunRecorder
 	}
 
 	/// <summary>
-	/// The player arrived in a zone: after a zone change, logging in, or the plugin starting.
+	/// The player arrived in a zone: after a zone change, logging in, or the plugin starting. They may still be
+	/// loading in.
 	/// </summary>
 	/// <param name="contentFinderConditionId">The zone's duty (<c>ContentFinderCondition</c>), or 0 if it isn't one</param>
 	/// <param name="throughDutyFinder">
@@ -65,7 +70,7 @@ public sealed class RunRecorder
 		{
 			if (contentFinderConditionId != 0 && contentFinderConditionId == current.GameContentId)
 			{
-				current.RunningSince ??= at;
+				current.Away = false;
 				return null;
 			}
 
@@ -79,12 +84,43 @@ public sealed class RunRecorder
 				Id = Guid.NewGuid(),
 				GameContentId = contentFinderConditionId,
 				Replacement = pop.InProgress,
-				RunningSince = at,
+				StartsOn = pop.InProgress ? ClockStart.LoadedIn : ClockStart.Commenced,
 				LastSeenAt = at,
 			};
 		}
 
 		return finished;
+	}
+
+	/// <summary>
+	/// The player has loaded in: logged in, in the world, and not between areas. Starts a replacement's clock, or
+	/// one coming back to the duty.
+	/// </summary>
+	/// <returns>Whether it started the clock</returns>
+	public bool LoadedIn(DateTime at)
+	{
+		if (_current is not { Away: false, RunningSince: null, StartsOn: ClockStart.LoadedIn } current)
+		{
+			return false;
+		}
+
+		current.RunningSince = at;
+		return true;
+	}
+
+	/// <summary>
+	/// "Duty commenced": starts the clock, if it hasn't started
+	/// </summary>
+	/// <returns>Whether it started the clock</returns>
+	public bool Commenced(DateTime at)
+	{
+		if (_current is not { Away: false, RunningSince: null } current)
+		{
+			return false;
+		}
+
+		current.RunningSince = at;
+		return true;
 	}
 
 	/// <summary>
@@ -100,7 +136,7 @@ public sealed class RunRecorder
 
 	public void Wiped()
 	{
-		if (IsRunning)
+		if (InDuty)
 		{
 			_current!.Wipes++;
 		}
@@ -111,20 +147,23 @@ public sealed class RunRecorder
 	/// </summary>
 	public Run? Completed(DateTime at)
 	{
-		return IsRunning ? Finish(cleared: true, at) : null;
+		return InDuty ? Finish(cleared: true, at) : null;
 	}
 
 	/// <summary>
-	/// The player logged out or disconnected. The clock stops until they're back in the duty.
+	/// The player logged out or disconnected. The clock stops until they've loaded back into the duty.
 	/// </summary>
 	public void LoggedOut(DateTime at)
 	{
-		if (_current is { RunningSince: { } since } current)
+		if (_current is not { Away: false } current)
 		{
-			current.Elapsed += at - since;
-			current.RunningSince = null;
-			current.LastSeenAt = at;
+			return;
 		}
+
+		StopClock(current, at);
+		current.Away = true;
+		current.StartsOn = ClockStart.LoadedIn;
+		current.LastSeenAt = at;
 	}
 
 	/// <summary>
@@ -137,7 +176,7 @@ public sealed class RunRecorder
 			return null;
 		}
 
-		var running = current.RunningSince is { } since;
+		var elapsed = current.RunningSince is { } since ? current.Elapsed + (at - since) : current.Elapsed;
 		return new InProgressRun
 		{
 			Id = current.Id,
@@ -145,14 +184,15 @@ public sealed class RunRecorder
 			GameClassJobId = current.GameClassJobId,
 			Replacement = current.Replacement,
 			Wipes = current.Wipes,
-			ElapsedSeconds = (running ? current.Elapsed + (at - current.RunningSince!.Value) : current.Elapsed).TotalSeconds,
-			LastSeenAt = running ? at : current.LastSeenAt,
+			ElapsedSeconds = elapsed.TotalSeconds,
+			LastSeenAt = current.Away ? current.LastSeenAt : at,
 		};
 	}
 
 	/// <summary>
 	/// Carries on with a saved run after the plugin starts. It's treated as logged out since it was last seen, so
-	/// the time in between doesn't count: arriving back in its duty carries on, and anywhere else ends it.
+	/// the time in between doesn't count: arriving back in its duty carries on once they've loaded in, and arriving
+	/// anywhere else ends it.
 	/// </summary>
 	public void Restore(InProgressRun run)
 	{
@@ -164,7 +204,8 @@ public sealed class RunRecorder
 			Replacement = run.Replacement,
 			Wipes = run.Wipes,
 			Elapsed = TimeSpan.FromSeconds(run.ElapsedSeconds),
-			RunningSince = null,
+			Away = true,
+			StartsOn = ClockStart.LoadedIn,
 			LastSeenAt = run.LastSeenAt,
 		};
 	}
@@ -174,12 +215,8 @@ public sealed class RunRecorder
 		var current = _current!;
 		_current = null;
 
-		var endedAt = current.LastSeenAt;
-		if (current.RunningSince is { } since)
-		{
-			current.Elapsed += at - since;
-			endedAt = at;
-		}
+		var endedAt = current.Away ? current.LastSeenAt : at;
+		StopClock(current, endedAt);
 
 		return new Run
 		{
@@ -194,7 +231,32 @@ public sealed class RunRecorder
 		};
 	}
 
+	private static void StopClock(Current current, DateTime at)
+	{
+		if (current.RunningSince is { } since)
+		{
+			current.Elapsed += at - since;
+			current.RunningSince = null;
+		}
+	}
+
 	private sealed record Pop(bool InProgress, DateTime At);
+
+	/// <summary>
+	/// What starts a run's clock
+	/// </summary>
+	private enum ClockStart
+	{
+		/// <summary>
+		/// "Duty commenced", like the game's own completion time
+		/// </summary>
+		Commenced,
+
+		/// <summary>
+		/// Loading in: for a replacement, who joins after the duty commenced, or coming back to the duty
+		/// </summary>
+		LoadedIn,
+	}
 
 	private sealed class Current
 	{
@@ -210,9 +272,16 @@ public sealed class RunRecorder
 		public TimeSpan Elapsed { get; set; }
 
 		/// <summary>
-		/// When the clock last started, or null while it's stopped (logged out)
+		/// When the clock last started, or null while it's stopped
 		/// </summary>
 		public DateTime? RunningSince { get; set; }
+
+		public required ClockStart StartsOn { get; set; }
+
+		/// <summary>
+		/// Logged out, or restored and not yet back: the next arrival decides
+		/// </summary>
+		public bool Away { get; set; }
 
 		public required DateTime LastSeenAt { get; set; }
 	}

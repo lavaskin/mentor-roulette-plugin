@@ -13,13 +13,15 @@ public class RunRecorderTests
 	private static DateTime At(int seconds) => Start.AddSeconds(seconds);
 
 	/// <summary>
-	/// A Mentor Roulette pop, then arriving in the duty
+	/// A Mentor Roulette pop, arriving in the duty at 20s, loading in at 25s, and "Duty commenced" at 30s
 	/// </summary>
-	private void Enter(uint duty = Vault, int popAt = 0, int arriveAt = 30, bool inProgress = false)
+	private void Enter(uint duty = Vault, int popAt = 0, int arriveAt = 20)
 	{
-		_recorder.Popped(isMentorRoulette: true, inProgress, At(popAt));
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(popAt));
 		Assert.Null(_recorder.Arrived(duty, throughDutyFinder: true, At(arriveAt)));
+		_recorder.LoadedIn(At(arriveAt + 5));
 		_recorder.JobKnown(Paladin);
+		Assert.True(_recorder.Commenced(At(arriveAt + 10)));
 	}
 
 	[Fact]
@@ -42,7 +44,30 @@ public class RunRecorderTests
 		Assert.Equal(At(1960), run.DatePlayed);
 		Assert.Equal(DateTimeKind.Utc, run.DatePlayed.Kind);
 		Assert.Equal(RunStatus.NotUploaded, run.Status);
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
+	}
+
+	[Fact]
+	public void TheTime_StartsAtDutyCommenced_LikeTheGames()
+	{
+		// The loading screen and the wait for the party to load in don't count: 27s, as the game says
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		Assert.False(_recorder.LoadedIn(At(23)));
+		_recorder.Commenced(At(25));
+
+		var run = _recorder.Completed(At(52));
+
+		Assert.Equal(27, run!.DurationSeconds);
+	}
+
+	[Fact]
+	public void DutyCommenced_OnlyStartsTheClockOnce()
+	{
+		Enter();
+		Assert.False(_recorder.Commenced(At(100)));
+
+		Assert.Equal(970, _recorder.Completed(At(1000))!.DurationSeconds);
 	}
 
 	[Fact]
@@ -105,7 +130,7 @@ public class RunRecorderTests
 
 		// Declined, and the queue's back to none, then the player teleports somewhere
 		Assert.Null(_recorder.Arrived(0, throughDutyFinder: false, At(60)));
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 		Assert.Null(_recorder.Snapshot(At(60)));
 	}
 
@@ -115,7 +140,7 @@ public class RunRecorderTests
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 
 		Assert.Null(_recorder.Arrived(Vault, throughDutyFinder: false, At(60)));
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 	}
 
 	[Fact]
@@ -125,7 +150,7 @@ public class RunRecorderTests
 
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(0) + RunRecorder.PopLifetime + TimeSpan.FromSeconds(1));
 
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 	}
 
 	[Fact]
@@ -136,7 +161,7 @@ public class RunRecorderTests
 
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(40));
 
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 	}
 
 	[Fact]
@@ -144,8 +169,9 @@ public class RunRecorderTests
 	{
 		_recorder.Popped(isMentorRoulette: false, inProgress: false, At(0));
 		_recorder.Arrived(Sastasha, throughDutyFinder: true, At(30));
+		_recorder.Commenced(At(40));
 
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 		Assert.Null(_recorder.Completed(At(900)));
 	}
 
@@ -157,15 +183,16 @@ public class RunRecorderTests
 		_recorder.Popped(isMentorRoulette: false, inProgress: false, At(60));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(90));
 
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 	}
 
 	[Fact]
 	public void ADutyEnteredWithoutAPop_RecordsNothing()
 	{
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(0));
+		_recorder.Commenced(At(10));
 
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 		Assert.Null(_recorder.Completed(At(900)));
 	}
 
@@ -185,6 +212,20 @@ public class RunRecorderTests
 	}
 
 	[Fact]
+	public void LeavingBeforeTheDutyCommenced_IsARunThatWasntCleared_OfOneSecond()
+	{
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.LoadedIn(At(25));
+
+		var run = _recorder.Arrived(0, throughDutyFinder: false, At(200));
+
+		Assert.False(run!.Cleared);
+		Assert.Equal(1, run.DurationSeconds);
+		Assert.Equal(At(200), run.DatePlayed);
+	}
+
+	[Fact]
 	public void BeingKicked_IntoAnotherDuty_EndsTheRun()
 	{
 		Enter();
@@ -193,17 +234,18 @@ public class RunRecorderTests
 
 		Assert.False(run!.Cleared);
 		Assert.Equal(Vault, run.GameContentId);
-		Assert.False(_recorder.IsRunning);
+		Assert.False(_recorder.InDuty);
 	}
 
 	[Fact]
-	public void AReplacement_IsMarked_AndItsTimeStartsOnArrival()
+	public void AReplacement_IsMarked_AndItsTimeStartsOnceLoadedIn()
 	{
 		_recorder.Popped(isMentorRoulette: true, inProgress: true, At(0));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(90));
 		_recorder.JobKnown(Paladin);
+		Assert.True(_recorder.LoadedIn(At(95)));
 
-		var run = _recorder.Completed(At(90 + 600));
+		var run = _recorder.Completed(At(95 + 600));
 
 		Assert.True(run!.Replacement);
 		Assert.Equal(600, run.DurationSeconds);
@@ -215,7 +257,9 @@ public class RunRecorderTests
 		Enter();
 
 		Assert.Null(_recorder.Arrived(Vault, throughDutyFinder: true, At(300)));
-		Assert.True(_recorder.IsRunning);
+		_recorder.LoadedIn(At(305));
+
+		Assert.True(_recorder.InDuty);
 		Assert.Equal(970, _recorder.Completed(At(1000))!.DurationSeconds);
 	}
 
@@ -234,22 +278,37 @@ public class RunRecorderTests
 	}
 
 	[Fact]
-	public void ADisconnectAndReturn_IsOneRun_WithTheTimeAwayLeftOut()
+	public void ADisconnectAndReturn_IsOneRun_WithTheTimeAwayAndLoadingLeftOut()
 	{
 		Enter();
 		_recorder.Wiped();
 		_recorder.LoggedOut(At(330));
-		Assert.True(_recorder.IsPaused);
+		Assert.True(_recorder.IsAway);
 
-		// Back in the same duty ten minutes later
+		// Back in the same duty ten minutes later, and loaded in 15 seconds after that
 		Assert.Null(_recorder.Arrived(Vault, throughDutyFinder: true, At(930)));
-		Assert.True(_recorder.IsRunning);
+		Assert.True(_recorder.InDuty);
+		Assert.True(_recorder.LoadedIn(At(945)));
 		_recorder.Wiped();
-		var run = _recorder.Completed(At(1230));
+		var run = _recorder.Completed(At(1245));
 
 		Assert.Equal(300 + 300, run!.DurationSeconds);
 		Assert.Equal(2, run.Wipes);
 		Assert.True(run.Cleared);
+	}
+
+	[Fact]
+	public void ADisconnectBeforeTheDutyCommenced_StartsTheClockOnReturn()
+	{
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.LoggedOut(At(25));
+
+		// It commenced while they were away, so there's no "Duty commenced" for them
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
+		_recorder.LoadedIn(At(210));
+
+		Assert.Equal(100, _recorder.Completed(At(310))!.DurationSeconds);
 	}
 
 	[Fact]
@@ -273,6 +332,7 @@ public class RunRecorderTests
 		_recorder.LoggedOut(At(500));
 
 		Assert.Null(_recorder.Completed(At(600)));
+		Assert.False(_recorder.LoadedIn(At(600)));
 		Assert.Equal(100, _recorder.Snapshot(At(600))!.ElapsedSeconds);
 	}
 
@@ -286,8 +346,9 @@ public class RunRecorderTests
 		// The game crashes; the plugin starts again, restores the saved run, and the player's back in the duty
 		var restarted = new RunRecorder();
 		restarted.Restore(saved!);
-		Assert.True(restarted.IsPaused);
+		Assert.True(restarted.IsAway);
 		Assert.Null(restarted.Arrived(Vault, throughDutyFinder: true, At(30 + 900)));
+		restarted.LoadedIn(At(30 + 900));
 		restarted.Wiped();
 		var run = restarted.Completed(At(30 + 1200));
 
@@ -315,7 +376,7 @@ public class RunRecorderTests
 		Assert.Equal(1, run.Wipes);
 		Assert.Equal(600, run.DurationSeconds);
 		Assert.Equal(At(630), run.DatePlayed);
-		Assert.False(restarted.IsPaused);
+		Assert.False(restarted.IsAway);
 	}
 
 	[Fact]
@@ -331,7 +392,19 @@ public class RunRecorderTests
 		Assert.Equal(1, snapshot.Wipes);
 		Assert.Equal(Vault, snapshot.GameContentId);
 		Assert.Equal(Paladin, snapshot.GameClassJobId);
-		Assert.True(_recorder.IsRunning);
+		Assert.True(_recorder.InDuty);
+	}
+
+	[Fact]
+	public void TheSnapshot_BeforeTheDutyCommenced_HasNoTime()
+	{
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+
+		var snapshot = _recorder.Snapshot(At(25));
+
+		Assert.Equal(0, snapshot!.ElapsedSeconds);
+		Assert.Equal(At(25), snapshot.LastSeenAt);
 	}
 
 	[Fact]
