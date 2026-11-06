@@ -3,36 +3,23 @@ using MentorRouletteTracker.Core.Models;
 namespace MentorRouletteTracker.Core.Text;
 
 /// <summary>
-/// The line in chat when a run ends: what was recorded, and what happened to it.
-/// "Mentor Roulette: The Vault, Paladin, cleared, 2 wipes, 32m 10s. Logged as run #1234."
+/// The line in chat when a run ends: "Logged #1234, The Vault, 32m 10s." The player just played it, so only the duty
+/// and time say which run it was, and the rest is what happened to it.
 /// </summary>
 public static class ChatLine
 {
-	public static string Format(Run run, string dutyName, string jobName, RunOutcome outcome)
+	public static string Format(Run run, string dutyName, RunOutcome outcome)
 	{
-		var parts = new List<string> { Names.Capitalize(dutyName), Names.Capitalize(jobName) };
-		if (run.Replacement)
-		{
-			parts.Add("replacement");
-		}
+		var what = $"{Names.Capitalize(dutyName)}, {Duration.Format(run.DurationSeconds)}";
 
-		parts.Add(run.Cleared ? "cleared" : "not cleared");
-		parts.Add(run.Wipes == 1 ? "1 wipe" : $"{run.Wipes} wipes");
-		parts.Add(Duration.Format(run.DurationSeconds));
-
-		return $"Mentor Roulette: {string.Join(", ", parts)}. {Outcome(outcome)}";
-	}
-
-	private static string Outcome(RunOutcome outcome)
-	{
 		return outcome.Kind switch
 		{
-			RunOutcomeKind.Logged => $"Logged as run #{outcome.RunNumber}.",
-			RunOutcomeKind.NotConnected => "Saved: connect to upload it.",
-			RunOutcomeKind.AutoUploadOff => "Saved, not uploaded.",
-			RunOutcomeKind.Refused => $"The site refused it: {Sentence(outcome.Reason ?? "no reason given")}",
-			RunOutcomeKind.NeedsReconnect => "Saved: reconnect in settings to upload it.",
-			_ => "Couldn't upload it yet: it'll try again later.",
+			RunOutcomeKind.Logged => $"Logged #{outcome.RunNumber}, {what}.",
+			RunOutcomeKind.NotConnected => $"Saved {what}: connect to upload it.",
+			RunOutcomeKind.AutoUploadOff => $"Saved {what}, not uploaded.",
+			RunOutcomeKind.Refused => $"Couldn't log {what}: {Sentence(outcome.Reason ?? "no reason given")}",
+			RunOutcomeKind.NeedsReconnect => $"Saved {what}: reconnect in settings to upload it.",
+			_ => $"Saved {what}: couldn't upload it yet, it'll try again later.",
 		};
 	}
 

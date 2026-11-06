@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using MentorRouletteTracker.Core.Api;
@@ -17,6 +19,13 @@ namespace MentorRouletteTracker;
 /// </summary>
 internal sealed class Tracker : IDisposable
 {
+	/// <summary>
+	/// The game's <c>UIColor</c> row for the chat line: a soft gold (#F3CC64, and a darker gold on light themes)
+	/// </summary>
+	private const ushort ChatColour = 31;
+
+	private const uint OpenRunsLinkId = 1;
+
 	private readonly IDalamudPluginInterface _pluginInterface;
 	private readonly IFramework _framework;
 	private readonly IChatGui _chat;
@@ -25,6 +34,7 @@ internal sealed class Tracker : IDisposable
 	private readonly BackgroundSaver _runsSaver;
 	private readonly BackgroundSaver _configSaver;
 	private readonly CancellationTokenSource _stopping = new();
+	private readonly DalamudLinkPayload _openRunsLink;
 
 	public Tracker(
 		IDalamudPluginInterface pluginInterface,
@@ -33,7 +43,8 @@ internal sealed class Tracker : IDisposable
 		IPluginLog log,
 		GameNames names,
 		RunStore store,
-		IMentorApi api)
+		IMentorApi api,
+		Action openRuns)
 	{
 		_pluginInterface = pluginInterface;
 		_framework = framework;
@@ -41,6 +52,7 @@ internal sealed class Tracker : IDisposable
 		_log = log;
 		_api = api;
 		Names = names;
+		_openRunsLink = chat.AddChatLinkHandler(OpenRunsLinkId, (_, _) => openRuns());
 
 		Config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 		_configSaver = new BackgroundSaver(
@@ -87,6 +99,7 @@ internal sealed class Tracker : IDisposable
 	public void Dispose()
 	{
 		_stopping.Cancel();
+		_chat.RemoveChatLinkHandler();
 		Log.Changed -= _runsSaver.Request;
 		_runsSaver.Flush();
 		_configSaver.Flush();
@@ -103,19 +116,30 @@ internal sealed class Tracker : IDisposable
 	public void RunEnded(Run run)
 	{
 		var duty = Names.Duty(run.GameContentId);
-		var job = Names.Job(run.GameClassJobId);
 		var outcome = Keeper.KeepAsync(run, _stopping.Token);
 
 		Background(SayAsync, "upload the run that ended");
 
 		async Task SayAsync()
 		{
-			var line = ChatLine.Format(run, duty, job, await outcome);
+			var line = ChatLine.Format(run, duty, await outcome);
 			if (Config.ChatLine && !_stopping.IsCancellationRequested)
 			{
-				await _framework.RunOnFrameworkThread(() => _chat.Print(line));
+				await _framework.RunOnFrameworkThread(() => _chat.Print(ChatMessage(line)));
 			}
 		}
+	}
+
+	/// <summary>
+	/// The chat line in gold, and clickable: clicking it opens the runs window
+	/// </summary>
+	private SeString ChatMessage(string line)
+	{
+		return new SeStringBuilder()
+			.Add(_openRunsLink)
+			.AddUiForeground(line, ChatColour)
+			.Add(RawPayload.LinkTerminator)
+			.Build();
 	}
 
 	/// <summary>

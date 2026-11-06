@@ -46,7 +46,8 @@ public sealed class Plugin : IDalamudPlugin
 			Log,
 			new GameNames(DataManager),
 			store,
-			new MentorApiClient(_http));
+			new MentorApiClient(_http),
+			OpenRuns);
 		_watcher = new RunWatcher(ClientState, DutyState, PlayerState, Framework, Condition, Log, store, _tracker.RunEnded);
 
 		_runsWindow = new RunsWindow(_tracker, () => _settingsWindow!.IsOpen = true);
@@ -76,6 +77,15 @@ public sealed class Plugin : IDalamudPlugin
 		_watcher.Dispose();
 		_tracker.Dispose();
 		_http.Dispose();
+	}
+
+	/// <summary>
+	/// Clicking the chat line: opens the runs window, or brings it to the front if it's open
+	/// </summary>
+	private void OpenRuns()
+	{
+		_runsWindow.IsOpen = true;
+		_runsWindow.BringToFront();
 	}
 
 	private void OnCommand(string command, string arguments)

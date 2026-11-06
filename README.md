@@ -31,7 +31,7 @@ The plugin is in its own repository, not Dalamud's official one.
 
 1. On the site, make a token on your **Account** page (the Plugin panel).
 2. In the game, open `/mrt config`, paste the token and click **Connect**. It says who you're connected as. One connection covers every character on the install.
-3. Play Mentor Roulettes. When each run ends, the plugin logs it to your account and says so in chat ("Logged as run #1234").
+3. Play Mentor Roulettes. When each run ends, the plugin logs it to your account and says so in chat ("Logged #1234, The Vault, 32m 10s."). Click the line to open your runs.
 
 Without connecting, it still records every run and keeps it, so you can connect and upload them later.
 

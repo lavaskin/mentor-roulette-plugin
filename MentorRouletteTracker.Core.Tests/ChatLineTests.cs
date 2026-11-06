@@ -6,43 +6,40 @@ namespace MentorRouletteTracker.Core.Tests;
 public class ChatLineTests
 {
 	private static readonly Run Cleared = Runs.Make(hour: 1) with { Wipes = 2, DurationSeconds = 1930 };
-	private static readonly Run Left = Runs.Make(hour: 1) with { Cleared = false, Wipes = 0, DurationSeconds = 242 };
 
 	[Fact]
-	public void ALoggedRun_SaysItsNumber()
+	public void ALoggedRun_SaysItsNumber_TheDutyAndTheTime()
 	{
 		Assert.Equal(
-			"Mentor Roulette: The Vault, Paladin, cleared, 2 wipes, 32m 10s. Logged as run #1234.",
-			ChatLine.Format(Cleared, "the Vault", "paladin", new RunOutcome(RunOutcomeKind.Logged, RunNumber: 1234)));
+			"Logged #1234, The Vault, 32m 10s.",
+			ChatLine.Format(Cleared, "the Vault", new RunOutcome(RunOutcomeKind.Logged, RunNumber: 1234)));
 	}
 
 	[Theory]
-	[InlineData(RunOutcomeKind.NotConnected, "Saved: connect to upload it.")]
-	[InlineData(RunOutcomeKind.AutoUploadOff, "Saved, not uploaded.")]
-	[InlineData(RunOutcomeKind.Waiting, "Couldn't upload it yet: it'll try again later.")]
-	[InlineData(RunOutcomeKind.NeedsReconnect, "Saved: reconnect in settings to upload it.")]
-	public void ARunNotUploaded_SaysWhy(RunOutcomeKind kind, string ending)
+	[InlineData(RunOutcomeKind.NotConnected, "Saved The Vault, 32m 10s: connect to upload it.")]
+	[InlineData(RunOutcomeKind.AutoUploadOff, "Saved The Vault, 32m 10s, not uploaded.")]
+	[InlineData(RunOutcomeKind.Waiting, "Saved The Vault, 32m 10s: couldn't upload it yet, it'll try again later.")]
+	[InlineData(RunOutcomeKind.NeedsReconnect, "Saved The Vault, 32m 10s: reconnect in settings to upload it.")]
+	public void ARunNotUploaded_SaysWhy(RunOutcomeKind kind, string line)
 	{
-		Assert.Equal(
-			"Mentor Roulette: The Vault, Paladin, not cleared, 0 wipes, 4m 2s. " + ending,
-			ChatLine.Format(Left, "The Vault", "Paladin", new RunOutcome(kind)));
+		Assert.Equal(line, ChatLine.Format(Cleared, "The Vault", new RunOutcome(kind)));
 	}
 
 	[Fact]
 	public void ARefusedRun_SaysTheSitesReason()
 	{
-		Assert.EndsWith(
-			"The site refused it: That duty isn't in the Mentor Roulette.",
-			ChatLine.Format(Cleared, "The Vault", "Paladin", new RunOutcome(RunOutcomeKind.Refused, Reason: "That duty isn't in the Mentor Roulette")));
+		Assert.Equal(
+			"Couldn't log The Vault, 32m 10s: That duty isn't in the Mentor Roulette.",
+			ChatLine.Format(Cleared, "The Vault", new RunOutcome(RunOutcomeKind.Refused, Reason: "That duty isn't in the Mentor Roulette")));
 	}
 
 	[Fact]
-	public void AReplacement_AndOneWipe_ReadRight()
+	public void TheJob_Clear_Wipes_AndReplacement_AreLeftOut()
 	{
-		var run = Cleared with { Replacement = true, Wipes = 1 };
+		var run = Cleared with { Cleared = false, Replacement = true, Wipes = 1, DurationSeconds = 242 };
 
-		Assert.StartsWith(
-			"Mentor Roulette: The Vault, Paladin, replacement, cleared, 1 wipe, 32m 10s.",
-			ChatLine.Format(run, "The Vault", "Paladin", new RunOutcome(RunOutcomeKind.AutoUploadOff)));
+		Assert.Equal(
+			"Logged #7, The Vault, 4m 2s.",
+			ChatLine.Format(run, "The Vault", new RunOutcome(RunOutcomeKind.Logged, RunNumber: 7)));
 	}
 }

@@ -150,7 +150,7 @@ public sealed class SettingsWindow : Window
 		Ui.Tooltip("Auto-upload. Any older runs that aren't uploaded go first, so the site numbers them in order.");
 
 		var chatLine = config.ChatLine;
-		if (ImGui.Checkbox("Say in chat what was recorded when a run ends", ref chatLine))
+		if (ImGui.Checkbox("Say in chat when a run ends", ref chatLine))
 		{
 			config.ChatLine = chatLine;
 			_tracker.SaveConfig();
