@@ -14,6 +14,10 @@ namespace MentorRouletteTracker.Core.Recording;
 /// commenced". A replacement joins after that, so their clock starts once they've loaded in. The clock stops while
 /// they're logged out, and starts again once they've loaded back into the duty. Loading screens never count.
 /// </para>
+/// <para>
+/// A run the player never loaded into (they disconnected or crashed on the loading screen, and didn't come back)
+/// gives out nothing: it has no job, which the site needs, and no time.
+/// </para>
 /// Not thread safe: the plugin calls it from the game's framework thread only.
 /// </summary>
 public sealed class RunRecorder
@@ -193,13 +197,15 @@ public sealed class RunRecorder
 			Wipes = current.Wipes,
 			ElapsedSeconds = elapsed.TotalSeconds,
 			LastSeenAt = current.Away ? current.LastSeenAt : at,
+			AwaitingDutyCommenced = current is { StartsOn: ClockStart.Commenced, RunningSince: null },
 		};
 	}
 
 	/// <summary>
 	/// Carries on with a saved run after the plugin starts. It's treated as logged out since it was last seen, so
 	/// the time in between doesn't count: arriving back in its duty carries on once they've loaded in, and arriving
-	/// anywhere else ends it.
+	/// anywhere else ends it. A run saved before "Duty commenced" still waits for it (the plugin was reloaded
+	/// while the party loaded in), so the wait doesn't count.
 	/// </summary>
 	public void Restore(InProgressRun run)
 	{
@@ -212,15 +218,20 @@ public sealed class RunRecorder
 			Wipes = run.Wipes,
 			Elapsed = TimeSpan.FromSeconds(run.ElapsedSeconds),
 			Away = true,
-			StartsOn = ClockStart.LoadedIn,
+			StartsOn = run.AwaitingDutyCommenced ? ClockStart.Commenced : ClockStart.LoadedIn,
 			LastSeenAt = run.LastSeenAt,
 		};
 	}
 
-	private Run Finish(bool cleared, DateTime at)
+	private Run? Finish(bool cleared, DateTime at)
 	{
 		var current = _current!;
 		_current = null;
+
+		if (current.GameClassJobId == 0)
+		{
+			return null;
+		}
 
 		var endedAt = current.Away ? current.LastSeenAt : at;
 		StopClock(current, endedAt);

@@ -26,4 +26,9 @@ public sealed record InProgressRun
 	/// The last time the player was known to be in the duty, in UTC: when this was saved, or when they logged out
 	/// </summary>
 	public required DateTime LastSeenAt { get; init; }
+
+	/// <summary>
+	/// The clock hasn't started, and starts at "Duty commenced"
+	/// </summary>
+	public bool AwaitingDutyCommenced { get; init; }
 }

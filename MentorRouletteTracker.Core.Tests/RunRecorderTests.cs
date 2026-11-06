@@ -57,6 +57,7 @@ public class RunRecorderTests
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
 		Assert.False(_recorder.LoadedIn(At(23)));
+		_recorder.JobKnown(Paladin);
 		_recorder.Commenced(At(25));
 
 		var run = _recorder.Completed(At(52));
@@ -173,6 +174,7 @@ public class RunRecorderTests
 		// The plugin was reloaded between the pop and arriving, so it never heard the pop
 		var run = new RunRecorder();
 		run.Arrived(Vault, throughDutyFinder: true, At(20), new AcceptedPop(IsMentorRoulette: true, InProgress: false));
+		run.JobKnown(Paladin);
 		run.Commenced(At(30));
 
 		var finished = run.Completed(At(130));
@@ -187,6 +189,7 @@ public class RunRecorderTests
 	{
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20), new AcceptedPop(IsMentorRoulette: true, InProgress: true));
 		_recorder.LoadedIn(At(25));
+		_recorder.JobKnown(Paladin);
 
 		var run = _recorder.Completed(At(125));
 
@@ -255,6 +258,7 @@ public class RunRecorderTests
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
 		_recorder.LoadedIn(At(25));
+		_recorder.JobKnown(Paladin);
 
 		var run = _recorder.Arrived(0, throughDutyFinder: false, At(200));
 
@@ -345,8 +349,36 @@ public class RunRecorderTests
 		// It commenced while they were away, so there's no "Duty commenced" for them
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
 		_recorder.LoadedIn(At(210));
+		_recorder.JobKnown(Paladin);
 
 		Assert.Equal(100, _recorder.Completed(At(310))!.DurationSeconds);
+	}
+
+	[Fact]
+	public void ADisconnectOnTheLoadingScreen_WithoutReturning_RecordsNothing()
+	{
+		// They never loaded in, so there's no job for the site and no time
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.LoggedOut(At(22));
+
+		Assert.Null(_recorder.Arrived(0, throughDutyFinder: false, At(500)));
+		Assert.False(_recorder.IsAway);
+		Assert.Null(_recorder.Snapshot(At(500)));
+	}
+
+	[Fact]
+	public void ACrashOnTheLoadingScreen_WithoutReturning_RecordsNothing()
+	{
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		var saved = _recorder.Snapshot(At(21));
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved!);
+
+		Assert.Null(restarted.Arrived(0, throughDutyFinder: false, At(500)));
+		Assert.False(restarted.IsAway);
 	}
 
 	[Fact]
@@ -395,6 +427,59 @@ public class RunRecorderTests
 		Assert.Equal(2, run.Wipes);
 		Assert.True(run.Cleared);
 		Assert.Equal(Paladin, run.GameClassJobId);
+	}
+
+	[Fact]
+	public void AReloadBeforeTheDutyCommenced_StillWaitsForIt()
+	{
+		// Reloaded while the party loads in: the wait doesn't count once it's back, like it wouldn't have without
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.LoadedIn(At(25));
+		_recorder.JobKnown(Paladin);
+		var saved = _recorder.Snapshot(At(26));
+		Assert.True(saved!.AwaitingDutyCommenced);
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(28));
+		Assert.False(restarted.LoadedIn(At(28)));
+		Assert.True(restarted.Commenced(At(40)));
+
+		Assert.Equal(100, restarted.Completed(At(140))!.DurationSeconds);
+	}
+
+	[Fact]
+	public void AReloadAfterTheDutyCommenced_CarriesOnOnceLoadedIn()
+	{
+		Enter();
+		var saved = _recorder.Snapshot(At(130));
+		Assert.False(saved!.AwaitingDutyCommenced);
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(140));
+
+		Assert.True(restarted.LoadedIn(At(145)));
+		Assert.Equal(100 + 55, restarted.Completed(At(200))!.DurationSeconds);
+	}
+
+	[Fact]
+	public void AReplacementReloadedBeforeLoadingIn_CarriesOnOnceLoadedIn()
+	{
+		// "Duty commenced" never comes for a replacement
+		_recorder.Popped(isMentorRoulette: true, inProgress: true, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		var saved = _recorder.Snapshot(At(21));
+		Assert.False(saved!.AwaitingDutyCommenced);
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(30));
+		restarted.JobKnown(Paladin);
+
+		Assert.True(restarted.LoadedIn(At(35)));
+		Assert.Equal(100, restarted.Completed(At(135))!.DurationSeconds);
 	}
 
 	[Fact]
