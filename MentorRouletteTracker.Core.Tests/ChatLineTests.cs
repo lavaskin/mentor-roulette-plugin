@@ -16,10 +16,10 @@ public class ChatLineTests
 	}
 
 	[Theory]
-	[InlineData(RunOutcomeKind.NotConnected, "Saved The Vault, 32m 10s: connect to upload it.")]
-	[InlineData(RunOutcomeKind.AutoUploadOff, "Saved The Vault, 32m 10s, not uploaded.")]
-	[InlineData(RunOutcomeKind.Waiting, "Saved The Vault, 32m 10s: couldn't upload it yet, it'll try again later.")]
-	[InlineData(RunOutcomeKind.NeedsReconnect, "Saved The Vault, 32m 10s: reconnect in settings to upload it.")]
+	[InlineData(RunOutcomeKind.NotConnected, "Saved The Vault, 32m 10s: not connected.")]
+	[InlineData(RunOutcomeKind.AutoUploadOff, "Saved The Vault, 32m 10s: auto-upload is off.")]
+	[InlineData(RunOutcomeKind.Waiting, "Failed to upload The Vault, 32m 10s.")]
+	[InlineData(RunOutcomeKind.NeedsReconnect, "Failed to upload The Vault, 32m 10s: not connected.")]
 	public void ARunNotUploaded_SaysWhy(RunOutcomeKind kind, string line)
 	{
 		Assert.Equal(line, ChatLine.Format(Cleared, "The Vault", new RunOutcome(kind)));
@@ -29,7 +29,7 @@ public class ChatLineTests
 	public void ARefusedRun_SaysTheSitesReason()
 	{
 		Assert.Equal(
-			"Couldn't log The Vault, 32m 10s: That duty isn't in the Mentor Roulette.",
+			"Failed to upload The Vault, 32m 10s: That duty isn't in the Mentor Roulette.",
 			ChatLine.Format(Cleared, "The Vault", new RunOutcome(RunOutcomeKind.Refused, Reason: "That duty isn't in the Mentor Roulette")));
 	}
 

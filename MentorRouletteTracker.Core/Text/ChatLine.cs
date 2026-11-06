@@ -4,7 +4,8 @@ namespace MentorRouletteTracker.Core.Text;
 
 /// <summary>
 /// The line in chat when a run ends: "Logged #1234, The Vault, 32m 10s." The player just played it, so only the duty
-/// and time say which run it was, and the rest is what happened to it.
+/// and time say which run it was, and the rest is what happened to it. It reports, rather than telling the player
+/// what to do.
 /// </summary>
 public static class ChatLine
 {
@@ -15,11 +16,11 @@ public static class ChatLine
 		return outcome.Kind switch
 		{
 			RunOutcomeKind.Logged => $"Logged #{outcome.RunNumber}, {what}.",
-			RunOutcomeKind.NotConnected => $"Saved {what}: connect to upload it.",
-			RunOutcomeKind.AutoUploadOff => $"Saved {what}, not uploaded.",
-			RunOutcomeKind.Refused => $"Couldn't log {what}: {Sentence(outcome.Reason ?? "no reason given")}",
-			RunOutcomeKind.NeedsReconnect => $"Saved {what}: reconnect in settings to upload it.",
-			_ => $"Saved {what}: couldn't upload it yet, it'll try again later.",
+			RunOutcomeKind.NotConnected => $"Saved {what}: not connected.",
+			RunOutcomeKind.AutoUploadOff => $"Saved {what}: auto-upload is off.",
+			RunOutcomeKind.Refused => $"Failed to upload {what}: {Sentence(outcome.Reason ?? "no reason given")}",
+			RunOutcomeKind.NeedsReconnect => $"Failed to upload {what}: not connected.",
+			_ => $"Failed to upload {what}.",
 		};
 	}
 
