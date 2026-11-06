@@ -26,7 +26,6 @@ internal sealed class Tracker : IDisposable
 
 	private const uint OpenRunsLinkId = 1;
 
-	private readonly IDalamudPluginInterface _pluginInterface;
 	private readonly IFramework _framework;
 	private readonly IChatGui _chat;
 	private readonly IPluginLog _log;
@@ -42,11 +41,10 @@ internal sealed class Tracker : IDisposable
 		IChatGui chat,
 		IPluginLog log,
 		GameNames names,
-		RunStore store,
+		PluginFiles files,
 		IMentorApi api,
 		Action openRuns)
 	{
-		_pluginInterface = pluginInterface;
 		_framework = framework;
 		_chat = chat;
 		_log = log;
@@ -54,13 +52,14 @@ internal sealed class Tracker : IDisposable
 		Names = names;
 		_openRunsLink = chat.AddChatLinkHandler(OpenRunsLinkId, (_, _) => openRuns());
 
-		Config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+		Config = files.LoadSettings();
 		_configSaver = new BackgroundSaver(
-			() => _pluginInterface.SavePluginConfig(Config),
+			() => files.SaveSettings(Config),
 			exception => _log.Error(exception, "Couldn't save the settings"));
 
-		// Only a dev build can point at another site. A dev build's settings carry over to the installed plugin, so
-		// the installed one goes back to the real site, dropping the token, which was for the other one.
+		// Only a dev build can point at another site. Dev builds keep their own settings, but one from 1.0.0 shared
+		// the installed plugin's, so the installed one goes back to the real site, dropping the token, which was for
+		// the other one.
 		IsDev = pluginInterface.IsDev;
 		if (!IsDev && Config.ServerAddress != ServerAddress.Default)
 		{
@@ -71,9 +70,9 @@ internal sealed class Tracker : IDisposable
 			SaveConfig();
 		}
 
-		Log = new RunLog(store.LoadRuns());
+		Log = new RunLog(files.Runs.LoadRuns());
 		_runsSaver = new BackgroundSaver(
-			() => store.SaveRuns(Log.Runs),
+			() => files.Runs.SaveRuns(Log.Runs),
 			exception => _log.Error(exception, "Couldn't save the runs"));
 		Log.Changed += _runsSaver.Request;
 

@@ -79,9 +79,9 @@ The plugin is built to `MentorRouletteTracker/bin/x64/<Debug|Release>/MentorRoul
 
 A pull request's build can be tried the same way: CI attaches it to each run as the `MentorRouletteTracker` artifact. Unzip it, and point the dev plugin location at its `MentorRouletteTracker.dll`.
 
-Only one of the installed plugin and a dev build can be loaded at once.
+Only one of the installed plugin and a dev build can be loaded at once. A dev build (a CI artifact too) keeps its own settings and runs, in `pluginConfigs/MentorRouletteTracker/dev/` (`settings.json`, `runs.json`), so trying one never touches the installed plugin's runs, and each stays connected to its own site. To switch, disable one and enable the other.
 
-To try it against a dev copy of the site, change the server address in `/mrt config` → **Advanced** (disconnect first). Advanced only shows when the plugin's loaded as a dev plugin: the installed plugin always uses https://mentor.lavask.in, and goes back to it (disconnecting) if a dev build left another address in its settings. The game under Wine reaches `localhost` on the same PC. The plugin logs what it sees (each queue pop, each arrival and whether it came through the duty finder, and each run) to Dalamud's log, `/xllog`, at the Debug level.
+To try it against a dev copy of the site, change the server address in `/mrt config` → **Advanced** (disconnect first). Advanced only shows when the plugin's loaded as a dev plugin: the installed plugin always uses https://mentor.lavask.in. The game under Wine reaches `localhost` on the same PC. The plugin logs what it sees (each queue pop, each arrival and whether it came through the duty finder, and each run) to Dalamud's log, `/xllog`, at the Debug level.
 
 ## Releasing
 

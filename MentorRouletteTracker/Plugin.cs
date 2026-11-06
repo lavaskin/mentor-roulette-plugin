@@ -6,7 +6,6 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using MentorRouletteTracker.Core.Api;
-using MentorRouletteTracker.Core.Storage;
 using MentorRouletteTracker.Windows;
 
 namespace MentorRouletteTracker;
@@ -38,17 +37,17 @@ public sealed class Plugin : IDalamudPlugin
 		var version = typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 		_http = MentorApiClient.CreateHttpClient(version);
 
-		var store = new RunStore(PluginInterface.GetPluginConfigDirectory(), warning => Log.Warning(warning));
+		var files = new PluginFiles(PluginInterface, warning => Log.Warning(warning));
 		_tracker = new Tracker(
 			PluginInterface,
 			Framework,
 			ChatGui,
 			Log,
 			new GameNames(DataManager),
-			store,
+			files,
 			new MentorApiClient(_http),
 			OpenRuns);
-		_watcher = new RunWatcher(ClientState, DutyState, PlayerState, Framework, Condition, Log, store, _tracker.RunEnded, _tracker.RunsSaved);
+		_watcher = new RunWatcher(ClientState, DutyState, PlayerState, Framework, Condition, Log, files.Runs, _tracker.RunEnded, _tracker.RunsSaved);
 
 		_runsWindow = new RunsWindow(_tracker, () => _settingsWindow!.IsOpen = true);
 		_settingsWindow = new SettingsWindow(_tracker, () => _runsWindow.IsOpen = true);

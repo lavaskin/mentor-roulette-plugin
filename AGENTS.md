@@ -17,13 +17,14 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
 - **`Core`'s folders,** each its own namespace (`Core.Models`, and so on):
   - `Models`: plain records and enums (`Run`, `InProgressRun`, `RunOutcome`, `AcceptedPop`), one type per file, with its enum beside it.
   - `Recording`: `RunRecorder`.
-  - `Storage`: `RunLog` (in memory), `RunStore` (on disk), `BackgroundSaver`.
+  - `Storage`: `RunLog` (in memory), `RunStore` (on disk), `JsonFile` (how each file's written), `BackgroundSaver`.
   - `Uploading`: `RunKeeper`, `Uploader`, `IUploadSettings`.
   - `Api`: talking to the site.
   - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `Names`).
 - **How it fits together:**
   - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, loaded in, duty commenced, wipe, duty complete, logout) to `Core.Recording.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute.
   - `Tracker` (plugin) hands each finished run to `Core.Uploading.RunKeeper`, which keeps it in `RunLog` (saved by `RunStore`) and uploads it through `Uploader` and `Api.MentorApiClient` if auto-upload's on.
+  - `PluginFiles` (plugin) says where the settings and runs live. A dev build keeps its own in the config directory's `dev` folder, apart from the installed plugin's.
   - The upload rules (oldest first, what holds up later runs, 401 and 400) are in `Uploader`'s summary.
 - **Style:** tabs in C#, file-scoped namespaces, `_camelCase` private instance fields and PascalCase static ones, like the API.
 - **Windows** use Dalamud's `Window` and `WindowSystem`. **Commands:** `/mrt` (runs) and `/mrt config` (settings).
