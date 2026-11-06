@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-05
+
+### Changed
+
+- A dev build of the plugin keeps its own settings and runs, apart from the installed plugin's, so trying one no longer changes the installed plugin's runs or disconnects it (#9).
+
 ## [1.0.0] - 2026-11-05
 
 ### Added
@@ -19,5 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A gold line in chat when a run ends gives its run number, duty and time, or why it wasn't logged. Clicking it opens your runs, and it can be turned off (#2).
 - A run the site can't take right now is tried again later, a run it refuses can be retried, and a run that isn't uploaded can be deleted (#2).
 
-[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/lavaskin/mentor-roulette-plugin/releases/tag/v1.0.0
