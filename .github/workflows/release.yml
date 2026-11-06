@@ -1,17 +1,20 @@
 name: Release
 
-# Releases a version when its tag (vX.Y.Z) is pushed: builds the plugin, makes a GitHub release with its zip
-# and the version's changelog, then points repo.json on main at it, which is what Dalamud installs from.
+# Releasing is merging: a push to main that brings a version (<Version> in MentorRouletteTracker.csproj) that isn't
+# released yet builds the plugin, makes a GitHub release with its zip and the version's changelog (which tags the
+# pushed commit vX.Y.Z), then points repo.json on main at it, which is what Dalamud installs from. A push whose
+# version is already released does nothing, unless repo.json doesn't point at it yet: then it finishes that release.
 # See "Releasing" in the README.
 
 on:
   push:
-    tags: ['v*.*.*']
+    branches: [main]
 
 permissions:
   contents: write
 
-# One release at a time, so two can't both commit repo.json
+# One at a time, so two can't both release a version or commit repo.json. The run started by the release's own
+# repo.json commit waits here, then finds nothing to do.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -23,62 +26,93 @@ jobs:
     timeout-minutes: 15
     env:
       DALAMUD_HOME: ${{ github.workspace }}/.dalamud
-      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
         with:
-          # The whole history, to check the tag is on main
-          fetch-depth: 0
           # The last step pushes repo.json to main, whose ruleset only deploy keys and admins can bypass:
           # GITHUB_TOKEN can't, and GitHub Actions can't be a bypass actor on a personal repository.
           # See "Releasing" in the README.
           ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
-      - name: Check the tag
+      - name: What to do
+        id: plan
         run: |
-          version=${TAG#v}
-          project=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' MentorRouletteTracker/MentorRouletteTracker.csproj)
-          if [[ "$version" != "$project" ]]; then
-            echo "::error::$TAG doesn't match the plugin's version, $project: bump <Version> in MentorRouletteTracker.csproj"
-            exit 1
-          fi
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::$TAG isn't on main: releases are tagged on main, once dev is merged into it"
-            exit 1
-          fi
-          .github/scripts/changelog-section.sh "$version" > "$RUNNER_TEMP/notes.md"
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' MentorRouletteTracker/MentorRouletteTracker.csproj)
+          action=$(.github/scripts/release-action.sh "$version")
+          {
+            echo "action=$action"
+            echo "tag=v$version"
+          } >> "$GITHUB_OUTPUT"
+          case $action in
+            release) echo "::notice::Releasing v$version" ;;
+            repo-json) echo "::notice::v$version is released, but repo.json doesn't point at it: updating repo.json" ;;
+            none) echo "::notice::v$version is already released: nothing to do" ;;
+          esac
+
+      # Before building, so a version bumped without its changelog section makes nothing
+      - name: Read the changelog
+        if: steps.plan.outputs.action == 'release'
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: .github/scripts/changelog-section.sh "${TAG#v}" > "$RUNNER_TEMP/notes.md"
 
       - uses: actions/setup-dotnet@v6
+        if: steps.plan.outputs.action == 'release'
         with:
           dotnet-version: 10.0.x
 
       - name: Download Dalamud
+        if: steps.plan.outputs.action == 'release'
         run: |
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/dalamud.zip" https://goatcorp.github.io/dalamud-distrib/latest.zip
           unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$DALAMUD_HOME"
 
       - name: Restore
+        if: steps.plan.outputs.action == 'release'
         run: dotnet restore --locked-mode
 
       - name: Test
+        if: steps.plan.outputs.action == 'release'
         run: dotnet test --no-restore -c Release
 
       - name: Build
+        if: steps.plan.outputs.action == 'release'
         run: dotnet build --no-restore -c Release
 
       - name: Make the GitHub release
+        if: steps.plan.outputs.action == 'release'
         env:
-          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.plan.outputs.tag }}
         run: |
-          cp MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker/latest.zip "$RUNNER_TEMP/MentorRouletteTracker.zip"
+          out=MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker
+          cp "$out/latest.zip" "$RUNNER_TEMP/MentorRouletteTracker.zip"
+          cp "$out/MentorRouletteTracker.json" "$RUNNER_TEMP/manifest.json"
           gh release create "$TAG" "$RUNNER_TEMP/MentorRouletteTracker.zip" \
-            --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+            --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+
+      # Finishing a release whose repo.json push failed: everything repo.json needs is in the release
+      - name: Read the release
+        if: steps.plan.outputs.action == 'repo-json'
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: |
+          if ! gh release download "$TAG" -p MentorRouletteTracker.zip -D "$RUNNER_TEMP"; then
+            echo "::error::$TAG is tagged, but has no release with MentorRouletteTracker.zip: delete the tag (git push origin :$TAG) and push to main again to release it"
+            exit 1
+          fi
+          unzip -p "$RUNNER_TEMP/MentorRouletteTracker.zip" MentorRouletteTracker.json > "$RUNNER_TEMP/manifest.json"
+          gh release view "$TAG" --json body --jq .body > "$RUNNER_TEMP/notes.md"
 
       # Last, so Dalamud never offers a version whose zip isn't up yet
       - name: Update repo.json on main
+        if: steps.plan.outputs.action != 'none'
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
         run: |
-          .github/scripts/repo-json.sh MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker/MentorRouletteTracker.json \
-            "$TAG" "$RUNNER_TEMP/notes.md" "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/repo.json"
+          .github/scripts/repo-json.sh "$RUNNER_TEMP/manifest.json" "$TAG" "$RUNNER_TEMP/notes.md" "$GITHUB_REPOSITORY" \
+            > "$RUNNER_TEMP/repo.json"
+          git fetch --quiet origin main
           git checkout -B main origin/main
           cp "$RUNNER_TEMP/repo.json" repo.json
           git config user.name 'github-actions[bot]'

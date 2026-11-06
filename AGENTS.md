@@ -63,7 +63,7 @@ After any change, build in Release and run the tests. **Never run `git clean -x`
 
 ## Releasing
 
-In the README (Releasing). The Release workflow runs on a `vX.Y.Z` tag on `main`, and updates `repo.json` there. Its two scripts are in `.github/scripts/`, so they can be run locally.
+In the README (Releasing). Releasing is merging: the Release workflow runs on every push to `main`, and releases `<Version>` (tagging it `vX.Y.Z` and updating `repo.json` on `main`) if it isn't released yet. Its three scripts are in `.github/scripts/`, so they can be run locally: `release-action.sh` decides what a push does, `changelog-section.sh` reads the release's notes, and `repo-json.sh` writes `repo.json`.
 
 ## Changelog
 
