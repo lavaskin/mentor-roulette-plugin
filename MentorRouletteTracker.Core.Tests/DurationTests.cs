@@ -1,4 +1,4 @@
-using MentorRouletteTracker.Core;
+using MentorRouletteTracker.Core.Text;
 
 namespace MentorRouletteTracker.Core.Tests;
 
