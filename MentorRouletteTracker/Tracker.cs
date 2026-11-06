@@ -131,7 +131,7 @@ internal sealed class Tracker : IDisposable
 	}
 
 	/// <summary>
-	/// The chat line in gold, and clickable: clicking it opens the runs window
+	/// The chat line (with its [MRT] tag) in gold, and clickable: clicking it opens the runs window
 	/// </summary>
 	private SeString ChatMessage(string line)
 	{
