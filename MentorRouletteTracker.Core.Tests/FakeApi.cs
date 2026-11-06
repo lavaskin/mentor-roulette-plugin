@@ -35,7 +35,7 @@ internal sealed class FakeApi : IMentorApi
 	public Task<ApiResult<string>> GetUsernameAsync(ApiConnection connection, CancellationToken cancellationToken)
 	{
 		Connections.Add(connection);
-		return Task.FromResult(ApiResult<string>.Ok("lavaskin"));
+		return Task.FromResult(ApiResult<string>.Ok("example_user"));
 	}
 
 	public async Task<ApiResult<LoggedRun>> LogRunAsync(ApiConnection connection, Run run, CancellationToken cancellationToken)

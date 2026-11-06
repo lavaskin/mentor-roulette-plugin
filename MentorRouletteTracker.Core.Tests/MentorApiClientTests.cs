@@ -71,11 +71,11 @@ public class MentorApiClientTests
 	[Fact]
 	public async Task Me_GivesTheUsername()
 	{
-		_handler.Respond(HttpStatusCode.OK, """{ "username": "lavaskin" }""");
+		_handler.Respond(HttpStatusCode.OK, """{ "username": "example_user" }""");
 
 		var result = await _client.GetUsernameAsync(Connection, CancellationToken.None);
 
-		Assert.Equal(ApiResult<string>.Ok("lavaskin"), result);
+		Assert.Equal(ApiResult<string>.Ok("example_user"), result);
 		var request = _handler.Requests.Single();
 		Assert.Equal(HttpMethod.Get, request.Method);
 		Assert.Equal("https://mentor.example/api/plugin/me", request.Uri);

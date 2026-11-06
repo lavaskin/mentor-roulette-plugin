@@ -29,7 +29,7 @@ internal sealed class GameNames
 
 	public string Job(uint classJobId)
 	{
-		// Row 0 is "adventurer": a run that ended before the plugin could read the job has 0
+		// Row 0 is "adventurer", which isn't a job
 		return _jobs.GetOrAdd(classJobId, id =>
 			id != 0 && _data.GetExcelSheet<ClassJob>().GetRowOrDefault(id)?.Name.ExtractText() is { Length: > 0 } name
 				? Names.Capitalize(name)

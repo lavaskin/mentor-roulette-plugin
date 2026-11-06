@@ -47,7 +47,7 @@ The same words as the site, for the same things:
 | Build | `dotnet build` (`-c Release` for what releases ship) |
 | Tests | `dotnet test` |
 
-The build needs Dalamud's assemblies. On this machine they're XIVLauncher.Core's, in `~/.xlcore/dalamud/Hooks/dev` (`Dalamud.NET.Sdk` finds them), or set `DALAMUD_HOME`. Trying a build in the game is in the README (Building). Only lavaskin can do that.
+The build needs Dalamud's assemblies. `Dalamud.NET.Sdk` finds the ones XIVLauncher installs (`%AppData%\XIVLauncher\addon\Hooks\dev` on Windows, `~/.xlcore/dalamud/Hooks/dev` with XIVLauncher.Core on Linux), or set `DALAMUD_HOME` to use others. Trying a build in the game is in the README (Building), and only the person testing it in the game can do that.
 
 After any change, build in Release and run the tests. **Never run `git clean -x`** (or `-d` without `-n` first): it deletes untracked files, including new work that isn't committed yet. To get a clean build, delete `bin/` and `obj/` instead.
 
@@ -70,6 +70,6 @@ In the README (Releasing). The Release workflow runs on a `vX.Y.Z` tag on `main`
 
 ## Rules
 
-- **Never change `<Version>`** in `MentorRouletteTracker.csproj`: lavaskin bumps it when releasing.
+- **Never change `<Version>`** in `MentorRouletteTracker.csproj`: it's bumped by hand when releasing (README, Releasing).
 - **Custom repository only.** The plugin is never submitted to Dalamud's official repository (DalamudPluginsD17), so its rules on review and AI use don't apply. Dalamud's plugin restrictions and its rules for talking to a backend server still do (<https://dalamud.dev/plugin-publishing/restrictions>, <https://dalamud.dev/plugin-development/technical-considerations>).
-- **Tickets and branches:** tickets are on the FFXIV board, and branches are `feature/mrp-<n>-<short-desc>` off `dev`.
+- **Tickets and branches:** tickets are GitHub issues, tracked on the FFXIV project board, and branches are `feature/mrp-<n>-<short-desc>` off `dev`, where `<n>` is the issue's number.

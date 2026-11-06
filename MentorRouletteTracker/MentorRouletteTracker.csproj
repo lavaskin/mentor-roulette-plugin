@@ -2,7 +2,7 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
 
   <!-- The plugin's manifest, which DalamudPackager writes into the zip and the release copies into repo.json.
-       Version is bumped only by lavaskin, when releasing. -->
+       Version is bumped by hand when releasing (see Releasing in the README). -->
   <PropertyGroup>
     <Version>1.0.0</Version>
     <Author>lavaskin</Author>

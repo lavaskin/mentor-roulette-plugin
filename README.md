@@ -85,7 +85,7 @@ To try it against a dev copy of the site, change the server address in `/mrt con
 
 ## Releasing
 
-The version is `<Version>` in `MentorRouletteTracker/MentorRouletteTracker.csproj`. Only lavaskin bumps it, by hand, following [semver](https://semver.org), when merging `dev` into `main`. Pull requests for tickets never change it.
+The version is `<Version>` in `MentorRouletteTracker/MentorRouletteTracker.csproj`. It's bumped by hand, following [semver](https://semver.org), as part of releasing (below). Pull requests for tickets never change it.
 
 What changed in each version is in `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/)), where each ticket's pull request adds its entries under `[Unreleased]`. To release:
 
@@ -108,7 +108,3 @@ It pushes `repo.json` with a deploy key, since `main`'s ruleset blocks the workf
 4. **Settings → Rules → Rulesets → main → Bypass list → Add bypass:** **Deploy keys**, set to Always allow.
 
 If the workflow fails before making the release, fix the problem, then delete the tag (`git push origin :vX.Y.Z` and `git tag -d vX.Y.Z`) and tag again. If it made the release but failed to update `repo.json`, run its last step by hand.
-
-## Icon
-
-`images/icon.png` is the site's logo (a crown on a roulette wheel), the 512px PNG made by the site's own generator (`scripts/logo/` in [mentor-roulette-tracker](https://github.com/lavaskin/mentor-roulette-tracker)). To change it, rebuild it there and copy `public/icon-512.png` over this one.

@@ -1,7 +1,7 @@
 namespace MentorRouletteTracker.Core.Api;
 
 /// <summary>
-/// The site's address, which the settings let the user change (to the dev server, say)
+/// The site's address, which a dev build's settings can change (to a local copy of the site, say)
 /// </summary>
 public static class ServerAddress
 {
