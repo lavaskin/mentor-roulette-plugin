@@ -13,12 +13,16 @@
 It only ever records the Mentor Roulette. Other roulettes, and duties you queue for yourself, are ignored.</Description>
     <RepoUrl>https://github.com/lavaskin/mentor-roulette-plugin</RepoUrl>
     <Tags>mentor;roulette;duty;tracker;stats</Tags>
+    <!-- An installed plugin's icon and feedback button come from this manifest in its folder, not from repo.json.
+         Feedback is off: the installer's form goes to Dalamud's team, not to a custom repository's author. -->
+    <IconUrl>https://raw.githubusercontent.com/lavaskin/mentor-roulette-plugin/main/images/icon.png</IconUrl>
+    <AcceptsFeedback>false</AcceptsFeedback>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MentorRouletteTracker.Core\MentorRouletteTracker.Core.csproj" />
   </ItemGroup>
-  <!-- A dev plugin's icon is images/icon.png beside its DLL (the installed plugin's is repo.json's IconUrl) -->
+  <!-- A dev plugin's icon is images/icon.png beside its DLL (the installed plugin's is the manifest's IconUrl) -->
   <ItemGroup>
     <None Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>
