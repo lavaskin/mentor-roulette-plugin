@@ -115,19 +115,29 @@ public class MentorApiClientTests
 	}
 
 	[Theory]
-	[InlineData(HttpStatusCode.InternalServerError)]
-	[InlineData(HttpStatusCode.BadGateway)]
-	[InlineData(HttpStatusCode.ServiceUnavailable)]
-	[InlineData(HttpStatusCode.TooManyRequests)]
-	[InlineData(HttpStatusCode.NotFound)]
-	public async Task OtherFailures_AreUnavailable_ToTryAgainLater(HttpStatusCode status)
+	[InlineData(HttpStatusCode.InternalServerError, "The site couldn't take it right now.")]
+	[InlineData(HttpStatusCode.ServiceUnavailable, "The site couldn't take it right now.")]
+	[InlineData(HttpStatusCode.TooManyRequests, "The site couldn't take it right now.")]
+	[InlineData(HttpStatusCode.NotFound, "The site couldn't take it right now.")]
+	[InlineData(HttpStatusCode.BadGateway, "Couldn't reach the site.")]
+	[InlineData(HttpStatusCode.GatewayTimeout, "Couldn't reach the site.")]
+	public async Task OtherFailures_AreUnavailable_ToTryAgainLater_InPlainWords(HttpStatusCode status, string message)
 	{
-		_handler.Respond(status, "");
+		_handler.Respond(status, """{ "error": "Couldn't look that duty up on XIVAPI, so the run wasn't logged. Try again later." }""");
 
 		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
 
-		Assert.Equal(ApiResultKind.Unavailable, result.Kind);
-		Assert.Contains(((int)status).ToString(), result.Message);
+		Assert.Equal(new ApiResult<LoggedRun>(ApiResultKind.Unavailable, Message: message), result);
+	}
+
+	[Fact]
+	public async Task A400WithOnlyAProblemTitle_GivesNoHttpWords()
+	{
+		_handler.Respond(HttpStatusCode.BadRequest, """{ "title": "Bad Request", "status": 400 }""");
+
+		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
+
+		Assert.Equal(new ApiResult<LoggedRun>(ApiResultKind.Refused, Message: "The site refused it."), result);
 	}
 
 	[Fact]

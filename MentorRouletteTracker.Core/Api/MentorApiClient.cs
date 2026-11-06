@@ -10,6 +10,9 @@ public sealed class MentorApiClient : IMentorApi
 {
 	public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(20);
 
+	private const string CouldntReach = "Couldn't reach the site.";
+	private const string CouldntTakeIt = "The site couldn't take it right now.";
+
 	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
 	private readonly HttpClient _http;
@@ -83,7 +86,7 @@ public sealed class MentorApiClient : IMentorApi
 		}
 		catch (HttpRequestException)
 		{
-			return new ApiResult<T>(ApiResultKind.Unavailable, Message: "Couldn't reach the site.");
+			return new ApiResult<T>(ApiResultKind.Unavailable, Message: CouldntReach);
 		}
 		catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
 		{
@@ -98,20 +101,23 @@ public sealed class MentorApiClient : IMentorApi
 				{
 					var value = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
 					return value is null
-						? new ApiResult<T>(ApiResultKind.Unavailable, Message: "The site's answer was empty.")
+						? new ApiResult<T>(ApiResultKind.Unavailable, Message: CouldntTakeIt)
 						: ApiResult<T>.Ok(value);
 				}
 				catch (JsonException)
 				{
-					return new ApiResult<T>(ApiResultKind.Unavailable, Message: "The site's answer couldn't be read.");
+					return new ApiResult<T>(ApiResultKind.Unavailable, Message: CouldntTakeIt);
 				}
 			}
 
+			// The messages are shown to players, so they never give status codes. A 502 or 504 comes from the proxy in
+			// front of the site when the site itself is down.
 			return response.StatusCode switch
 			{
 				HttpStatusCode.Unauthorized => new ApiResult<T>(ApiResultKind.Unauthorized, Message: "The site didn't accept the token."),
 				HttpStatusCode.BadRequest => new ApiResult<T>(ApiResultKind.Refused, Message: await ReadErrorAsync(response, cancellationToken)),
-				_ => new ApiResult<T>(ApiResultKind.Unavailable, Message: $"The site couldn't take it right now ({(int)response.StatusCode})."),
+				HttpStatusCode.BadGateway or HttpStatusCode.GatewayTimeout => new ApiResult<T>(ApiResultKind.Unavailable, Message: CouldntReach),
+				_ => new ApiResult<T>(ApiResultKind.Unavailable, Message: CouldntTakeIt),
 			};
 		}
 	}
@@ -149,9 +155,8 @@ public sealed class MentorApiClient : IMentorApi
 				}
 			}
 
-			return root.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String
-				? title.GetString()!
-				: fallback;
+			// Not a problem's title, which is HTTP's words ("Bad Request")
+			return fallback;
 		}
 		catch (JsonException)
 		{
