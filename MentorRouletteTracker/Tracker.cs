@@ -164,6 +164,11 @@ internal sealed class Tracker : IDisposable
 		Background(() => Uploader.RetryAsync(id, _stopping.Token), "retry a run");
 	}
 
+	public void Delete(Guid id)
+	{
+		Background(() => Uploader.DeleteAsync(id, _stopping.Token), "delete a run");
+	}
+
 	/// <summary>
 	/// Checks a token with the site, and keeps it if the site accepts it
 	/// </summary>

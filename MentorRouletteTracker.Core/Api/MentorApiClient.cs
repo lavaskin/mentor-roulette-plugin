@@ -176,5 +176,5 @@ public sealed class MentorApiClient : IMentorApi
 		int DurationSeconds,
 		DateTime DatePlayed);
 
-	private sealed record RunResponse(int MentorRouletteLogId, int RunNumber);
+	private sealed record RunResponse(long MentorRouletteLogId, int RunNumber);
 }

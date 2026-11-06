@@ -59,6 +59,16 @@ public class MentorApiClientTests
 	}
 
 	[Fact]
+	public async Task ARunsSiteId_CanBeALong_LikeTheApis()
+	{
+		_handler.Respond(HttpStatusCode.Created, """{ "mentorRouletteLogId": 3000000000, "runNumber": 123 }""");
+
+		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
+
+		Assert.Equal(new LoggedRun(3_000_000_000, 123), result.Value);
+	}
+
+	[Fact]
 	public async Task Me_GivesTheUsername()
 	{
 		_handler.Respond(HttpStatusCode.OK, """{ "username": "lavaskin" }""");

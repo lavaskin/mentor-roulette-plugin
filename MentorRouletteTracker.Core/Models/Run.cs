@@ -55,7 +55,7 @@ public sealed record Run
 	/// <summary>
 	/// The run's id on the site, for its link, once uploaded
 	/// </summary>
-	public int? SiteRunId { get; init; }
+	public long? SiteRunId { get; init; }
 
 	/// <summary>
 	/// The run's number on the site, once uploaded

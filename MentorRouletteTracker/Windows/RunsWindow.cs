@@ -86,7 +86,8 @@ public sealed class RunsWindow : Window
 
 		if (_tracker.Uploader.Problem is { } problem && !uploading)
 		{
-			Ui.Wrapped(Ui.WarningColour, $"Couldn't upload: {problem} It'll try again after your next run, or upload them now.");
+			var then = _tracker.Keeper.AutoUploading ? " It'll try again after your next run, or upload them now." : "";
+			Ui.Wrapped(Ui.WarningColour, $"Couldn't upload: {problem}{then}");
 		}
 
 		ImGui.TextWrapped(NumberingNote);
@@ -220,7 +221,7 @@ public sealed class RunsWindow : Window
 
 			if (ImGui.Button("Delete"))
 			{
-				_tracker.Log.Delete(run.Id);
+				_tracker.Delete(run.Id);
 				_deleting = null;
 				ImGui.CloseCurrentPopup();
 			}

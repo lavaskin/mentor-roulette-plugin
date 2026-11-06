@@ -193,6 +193,54 @@ public class UploaderTests
 	}
 
 	[Fact]
+	public async Task Disconnecting_StopsAPassThatsRunning()
+	{
+		var first = Runs.Make(hour: 1);
+		var second = Runs.Make(hour: 2);
+		var log = new RunLog([first, second]);
+		_api.OnSend = () => _settings.Token = null;
+
+		await UploaderFor(log).UploadAsync();
+
+		Assert.Equal([first.Id], _api.Sent.Select(run => run.Id));
+		Assert.Equal(RunStatus.NotUploaded, log.Find(second.Id)!.Status);
+	}
+
+	[Fact]
+	public async Task ARunDeletedWhileItUploads_IsKept()
+	{
+		var run = Runs.Make(hour: 1);
+		var log = new RunLog([run]);
+		var uploader = UploaderFor(log);
+		var sending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		var answer = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		_api.Hold = (sending, answer);
+
+		var pass = uploader.UploadAsync();
+		await sending.Task;
+		var delete = uploader.DeleteAsync(run.Id);
+		Assert.False(delete.IsCompleted);
+		answer.SetResult();
+		await pass;
+
+		// It's logged on the site, so it stays here
+		Assert.False(await delete);
+		Assert.Equal(RunStatus.Uploaded, log.Find(run.Id)!.Status);
+	}
+
+	[Fact]
+	public async Task ARunThatIsntUploaded_CanBeDeleted()
+	{
+		var run = Runs.Make(hour: 1, duty: DownDuty);
+		var log = new RunLog([run]);
+		var uploader = UploaderFor(log);
+		await uploader.UploadAsync();
+
+		Assert.True(await uploader.DeleteAsync(run.Id));
+		Assert.Null(log.Find(run.Id));
+	}
+
+	[Fact]
 	public async Task UploadedRuns_ArentSentAgain()
 	{
 		var log = new RunLog([Runs.Make(hour: 1, status: RunStatus.Uploaded)]);

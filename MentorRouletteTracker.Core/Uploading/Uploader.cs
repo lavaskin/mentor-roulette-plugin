@@ -45,21 +45,22 @@ public sealed class Uploader
 
 	/// <summary>
 	/// Uploads every run that isn't uploaded, oldest first, until one has to wait. Runs that end while it's
-	/// uploading go in the same pass. If a pass is already running, waits for it, then makes its own.
+	/// uploading go in the same pass. If a pass is already running, waits for it, then makes its own. Each run goes
+	/// with the connection as it is then, so disconnecting stops the pass.
 	/// </summary>
 	public async Task UploadAsync(CancellationToken cancellationToken = default)
 	{
 		await _gate.WaitAsync(cancellationToken);
 		try
 		{
-			if (_connection() is not { } connection)
-			{
-				return;
-			}
-
 			var tried = new HashSet<Guid>();
 			while (_log.NotUploaded.FirstOrDefault(run => !tried.Contains(run.Id)) is { } run)
 			{
+				if (_connection() is not { } connection)
+				{
+					return;
+				}
+
 				tried.Add(run.Id);
 				var result = await _api.LogRunAsync(connection, run, cancellationToken);
 				switch (result.Kind)
@@ -112,6 +113,24 @@ public sealed class Uploader
 			? run with { Status = RunStatus.NotUploaded, FailedReason = null }
 			: run);
 		return UploadAsync(cancellationToken);
+	}
+
+	/// <summary>
+	/// Deletes a run that isn't uploaded, once no pass is running, so a run in the middle of uploading can't end up
+	/// logged on the site and gone here
+	/// </summary>
+	/// <returns>Whether it was deleted: not if it was uploaded meanwhile</returns>
+	public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+	{
+		await _gate.WaitAsync(cancellationToken);
+		try
+		{
+			return _log.Delete(id);
+		}
+		finally
+		{
+			_gate.Release();
+		}
 	}
 
 	/// <summary>

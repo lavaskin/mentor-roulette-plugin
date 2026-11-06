@@ -21,23 +21,43 @@ internal sealed class FakeApi : IMentorApi
 
 	public List<ApiConnection> Connections { get; } = [];
 
+	/// <summary>
+	/// Called as each run is sent, before it's answered
+	/// </summary>
+	public Action? OnSend { get; set; }
+
+	/// <summary>
+	/// Holds up the next run's answer: <c>Sending</c> completes once it's sent, and it's answered once <c>Answer</c>
+	/// completes
+	/// </summary>
+	public (TaskCompletionSource Sending, TaskCompletionSource Answer)? Hold { get; set; }
+
 	public Task<ApiResult<string>> GetUsernameAsync(ApiConnection connection, CancellationToken cancellationToken)
 	{
 		Connections.Add(connection);
 		return Task.FromResult(ApiResult<string>.Ok("lavaskin"));
 	}
 
-	public Task<ApiResult<LoggedRun>> LogRunAsync(ApiConnection connection, Run run, CancellationToken cancellationToken)
+	public async Task<ApiResult<LoggedRun>> LogRunAsync(ApiConnection connection, Run run, CancellationToken cancellationToken)
 	{
 		Connections.Add(connection);
 		Sent.Add(run);
+		OnSend?.Invoke();
+
+		if (Hold is { } hold)
+		{
+			Hold = null;
+			hold.Sending.SetResult();
+			await hold.Answer.Task;
+		}
+
 		if (Answers.TryGetValue(run.GameContentId, out var answer))
 		{
-			return Task.FromResult(answer);
+			return answer;
 		}
 
 		var number = _nextRunNumber++;
-		return Task.FromResult(ApiResult<LoggedRun>.Ok(new LoggedRun(number + 5000, number)));
+		return ApiResult<LoggedRun>.Ok(new LoggedRun(number + 5000, number));
 	}
 }
 

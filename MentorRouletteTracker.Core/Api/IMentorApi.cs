@@ -29,7 +29,7 @@ public sealed record ApiConnection(string ServerAddress, string Token);
 /// </summary>
 /// <param name="Id">Its id on the site, for its link</param>
 /// <param name="RunNumber">Its number on the site</param>
-public sealed record LoggedRun(int Id, int RunNumber);
+public sealed record LoggedRun(long Id, int RunNumber);
 
 public enum ApiResultKind
 {
