@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The installed plugin shows its icon in Dalamud's plugin installer, and no longer offers Dalamud's feedback form, which went to Dalamud's team rather than to the plugin's author (#12).
+
 ## [1.0.1] - 2026-11-05
 
 ### Changed
