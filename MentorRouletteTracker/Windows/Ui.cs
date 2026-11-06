@@ -13,7 +13,6 @@ internal static class Ui
 	public static readonly Vector4 LinkColour = new(0.45f, 0.7f, 1f, 1f);
 	public static readonly Vector4 WarningColour = new(1f, 0.75f, 0.3f, 1f);
 	public static readonly Vector4 ErrorColour = new(1f, 0.45f, 0.45f, 1f);
-	public static readonly Vector4 GoodColour = new(0.5f, 0.85f, 0.5f, 1f);
 
 	/// <summary>
 	/// Text that works like a link

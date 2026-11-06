@@ -126,11 +126,10 @@ internal sealed unsafe class RunWatcher : IDisposable
 			}
 
 			var popped = finder->QueueInfo.PoppedQueueEntry;
-			var isMentorRoulette = popped.ContentType == ContentsType.Roulette && popped.Id == MentorRouletteId;
 			var inProgress = finder->QueueInfo.PoppedContentIsInProgress;
 			_log.Debug("Queue pop: {Type} {Id}, in progress {InProgress}", popped.ContentType, popped.Id, inProgress);
 
-			_recorder.Popped(isMentorRoulette, inProgress, DateTime.UtcNow);
+			_recorder.Popped(IsMentorRoulette(popped.ContentType, popped.Id), inProgress, DateTime.UtcNow);
 		});
 	}
 
@@ -250,9 +249,12 @@ internal sealed unsafe class RunWatcher : IDisposable
 		}
 
 		var popped = finder->QueueInfo.PoppedQueueEntry;
-		return new AcceptedPop(
-			popped.ContentType == ContentsType.Roulette && popped.Id == MentorRouletteId,
-			finder->QueueInfo.PoppedContentIsInProgress);
+		return new AcceptedPop(IsMentorRoulette(popped.ContentType, popped.Id), finder->QueueInfo.PoppedContentIsInProgress);
+	}
+
+	private static bool IsMentorRoulette(ContentsType type, uint id)
+	{
+		return type == ContentsType.Roulette && id == MentorRouletteId;
 	}
 
 	/// <summary>
