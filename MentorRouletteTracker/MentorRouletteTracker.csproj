@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+
+  <!-- The plugin's manifest, which DalamudPackager writes into the zip and the release copies into repo.json.
+       Version is bumped by hand when releasing (see Releasing in the README). -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Author>lavaskin</Author>
+    <Name>Mentor Roulette Tracker</Name>
+    <Punchline>Logs your Mentor Roulette runs to Mentor Roulette Tracker.</Punchline>
+    <Description>Records each Mentor Roulette run you play: the duty, your job, whether it was cleared, whether you joined as a replacement, how many times the party wiped and your time in the duty. Connect it to your account on Mentor Roulette Tracker (mentor.lavask.in) and it logs them there for you, or keep them in the plugin and upload them later.
+
+It only ever records the Mentor Roulette. Other roulettes, and duties you queue for yourself, are ignored.</Description>
+    <RepoUrl>https://github.com/lavaskin/mentor-roulette-plugin</RepoUrl>
+    <Tags>mentor;roulette;duty;tracker;stats</Tags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MentorRouletteTracker.Core\MentorRouletteTracker.Core.csproj" />
+  </ItemGroup>
+  <!-- A dev plugin's icon is images/icon.png beside its DLL (the installed plugin's is repo.json's IconUrl) -->
+  <ItemGroup>
+    <None Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+</Project>

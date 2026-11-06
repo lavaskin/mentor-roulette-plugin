@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  # Catches anything pushed straight to main, which is the branch releases are tagged on.
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older run. Runs on main all finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test-and-build:
+    name: Test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Where Dalamud.NET.Sdk looks for Dalamud's assemblies, which aren't on NuGet
+      DALAMUD_HOME: ${{ github.workspace }}/.dalamud
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # Dalamud's latest release. When Dalamud moves to a new API level, this fails until the plugin is
+      # updated to it, which Dalamud requires before the plugin will load anyway.
+      - name: Download Dalamud
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/dalamud.zip" https://goatcorp.github.io/dalamud-distrib/latest.zip
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$DALAMUD_HOME"
+
+      # The plugin's packages.lock.json must match its packages (Dalamud.NET.Sdk turns lock files on).
+      - name: Restore
+        id: restore
+        run: dotnet restore --locked-mode
+
+      - name: Test
+        run: dotnet test --no-restore -c Release
+
+      # The build the release makes. Runs even when tests fail, so both are reported.
+      - name: Build
+        if: ${{ !cancelled() && steps.restore.outcome == 'success' }}
+        run: dotnet build --no-restore -c Release
+
+      # To try a pull request's build in the game before it's released (see the README)
+      - name: Upload the plugin
+        if: ${{ !cancelled() && steps.restore.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: MentorRouletteTracker
+          path: MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker/latest.zip
+          if-no-files-found: error
+          retention-days: 7

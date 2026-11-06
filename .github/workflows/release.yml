@@ -1,0 +1,88 @@
+name: Release
+
+# Releases a version when its tag (vX.Y.Z) is pushed: builds the plugin, makes a GitHub release with its zip
+# and the version's changelog, then points repo.json on main at it, which is what Dalamud installs from.
+# See "Releasing" in the README.
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+# One release at a time, so two can't both commit repo.json
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DALAMUD_HOME: ${{ github.workspace }}/.dalamud
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The whole history, to check the tag is on main
+          fetch-depth: 0
+          # The last step pushes repo.json to main, whose ruleset only deploy keys and admins can bypass:
+          # GITHUB_TOKEN can't, and GitHub Actions can't be a bypass actor on a personal repository.
+          # See "Releasing" in the README.
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
+      - name: Check the tag
+        run: |
+          version=${TAG#v}
+          project=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' MentorRouletteTracker/MentorRouletteTracker.csproj)
+          if [[ "$version" != "$project" ]]; then
+            echo "::error::$TAG doesn't match the plugin's version, $project: bump <Version> in MentorRouletteTracker.csproj"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$TAG isn't on main: releases are tagged on main, once dev is merged into it"
+            exit 1
+          fi
+          .github/scripts/changelog-section.sh "$version" > "$RUNNER_TEMP/notes.md"
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download Dalamud
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/dalamud.zip" https://goatcorp.github.io/dalamud-distrib/latest.zip
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$DALAMUD_HOME"
+
+      - name: Restore
+        run: dotnet restore --locked-mode
+
+      - name: Test
+        run: dotnet test --no-restore -c Release
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Make the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker/latest.zip "$RUNNER_TEMP/MentorRouletteTracker.zip"
+          gh release create "$TAG" "$RUNNER_TEMP/MentorRouletteTracker.zip" \
+            --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+
+      # Last, so Dalamud never offers a version whose zip isn't up yet
+      - name: Update repo.json on main
+        run: |
+          .github/scripts/repo-json.sh MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker/MentorRouletteTracker.json \
+            "$TAG" "$RUNNER_TEMP/notes.md" "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/repo.json"
+          git checkout -B main origin/main
+          cp "$RUNNER_TEMP/repo.json" repo.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add repo.json
+          git commit -m "repo.json: $TAG"
+          git push origin main
