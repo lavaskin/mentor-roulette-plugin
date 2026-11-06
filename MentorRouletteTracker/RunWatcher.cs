@@ -46,7 +46,8 @@ internal sealed unsafe class RunWatcher : IDisposable
 	/// </summary>
 	private bool _lookedOnStart;
 
-	/// <param name="runEnded">Each finished run, on the framework thread</param>
+	/// <param name="runEnded">Each finished run, on the framework thread, which keeps it and asks for it to be saved</param>
+	/// <param name="runsSaved">Waits for the kept runs to be saved, and says whether they were</param>
 	public RunWatcher(
 		IClientState clientState,
 		IDutyState dutyState,
@@ -55,7 +56,8 @@ internal sealed unsafe class RunWatcher : IDisposable
 		ICondition condition,
 		IPluginLog log,
 		RunStore store,
-		Action<Run> runEnded)
+		Action<Run> runEnded,
+		Func<bool> runsSaved)
 	{
 		_clientState = clientState;
 		_dutyState = dutyState;
@@ -65,7 +67,20 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_log = log;
 		_runEnded = runEnded;
 		_saver = new BackgroundSaver(
-			() => store.SaveInProgress(Volatile.Read(ref _snapshot)),
+			() =>
+			{
+				var snapshot = Volatile.Read(ref _snapshot);
+
+				// The run that ended is cleared only once it's in the runs file, so a crash can't lose it. If that save
+				// failed, the old file stays, and carries the run on or ends it again next time.
+				if (snapshot is null && !runsSaved())
+				{
+					_log.Warning("Kept the run in progress, since the runs couldn't be saved");
+					return;
+				}
+
+				store.SaveInProgress(snapshot);
+			},
 			exception => _log.Error(exception, "Couldn't save the run in progress"));
 
 		if (store.LoadInProgress() is { } saved)
@@ -253,7 +268,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	private void Finished(Run? run)
 	{
-		// Kept before the run in progress is cleared, so a crash in between can't lose it
+		// Kept before the run in progress is cleared, whose save waits for the runs' (above), so a crash can't lose it
 		if (run is not null)
 		{
 			_log.Information("Run ended: duty {Duty}, cleared {Cleared}, {Wipes} wipes, {Seconds}s", run.GameContentId, run.Cleared, run.Wipes, run.DurationSeconds);

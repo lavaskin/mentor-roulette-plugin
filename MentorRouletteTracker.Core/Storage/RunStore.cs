@@ -7,7 +7,7 @@ namespace MentorRouletteTracker.Core.Storage;
 /// <summary>
 /// The plugin's runs on disk, as JSON in its config directory: <c>runs.json</c> (every run, kept forever) and
 /// <c>run-in-progress.json</c> (the run being played, while there is one). Each file is written whole to a temporary
-/// file and then moved over the old one, so a crash mid-write can't leave it half written.
+/// file, flushed to disk, and then moved over the old one, so a crash mid-write can't leave it half written.
 /// </summary>
 public sealed class RunStore
 {
@@ -89,7 +89,14 @@ public sealed class RunStore
 	private static void Write<T>(string path, T value)
 	{
 		var temporary = path + ".tmp";
-		File.WriteAllText(temporary, JsonSerializer.Serialize(value, JsonOptions));
+		using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
+		{
+			JsonSerializer.Serialize(stream, value, JsonOptions);
+
+			// On disk before it replaces the old file, so a power cut can't leave an empty one in its place
+			stream.Flush(flushToDisk: true);
+		}
+
 		File.Move(temporary, path, overwrite: true);
 	}
 

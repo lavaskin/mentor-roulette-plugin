@@ -111,6 +111,15 @@ internal sealed class Tracker : IDisposable
 	}
 
 	/// <summary>
+	/// Waits for the runs to be saved, off the framework thread
+	/// </summary>
+	/// <returns>Whether the last save worked</returns>
+	public bool RunsSaved()
+	{
+		return _runsSaver.Flush();
+	}
+
+	/// <summary>
 	/// A run that just ended, on the framework thread: kept now, then uploaded if auto-upload's on, then the chat line
 	/// </summary>
 	public void RunEnded(Run run)

@@ -13,6 +13,7 @@ public sealed class BackgroundSaver
 	private bool _requested;
 	private Task _worker = Task.CompletedTask;
 	private bool _running;
+	private bool _lastFailed;
 
 	public BackgroundSaver(Action save, Action<Exception> onError)
 	{
@@ -36,7 +37,8 @@ public sealed class BackgroundSaver
 	/// <summary>
 	/// Waits for every requested save to finish
 	/// </summary>
-	public void Flush()
+	/// <returns>Whether the last save worked</returns>
+	public bool Flush()
 	{
 		while (true)
 		{
@@ -45,7 +47,7 @@ public sealed class BackgroundSaver
 			{
 				if (!_running)
 				{
-					return;
+					return !_lastFailed;
 				}
 
 				worker = _worker;
@@ -70,13 +72,20 @@ public sealed class BackgroundSaver
 				_requested = false;
 			}
 
+			var failed = false;
 			try
 			{
 				_save();
 			}
 			catch (Exception exception)
 			{
+				failed = true;
 				_onError(exception);
+			}
+
+			lock (_lock)
+			{
+				_lastFailed = failed;
 			}
 		}
 	}
