@@ -18,5 +18,9 @@ It only ever records the Mentor Roulette. Other roulettes, and duties you queue 
   <ItemGroup>
     <ProjectReference Include="..\MentorRouletteTracker.Core\MentorRouletteTracker.Core.csproj" />
   </ItemGroup>
+  <!-- A dev plugin's icon is images/icon.png beside its DLL (the installed plugin's is repo.json's IconUrl) -->
+  <ItemGroup>
+    <None Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
 
 </Project>
