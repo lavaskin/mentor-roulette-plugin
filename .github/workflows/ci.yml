@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
     branches: [main, dev]
-  # Catches anything pushed straight to main, which is the branch releases are tagged on.
+  # Catches anything pushed straight to main, which is the branch releases are made from.
   push:
     branches: [main]
   workflow_dispatch:

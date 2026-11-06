@@ -79,9 +79,9 @@ The plugin is built to `MentorRouletteTracker/bin/x64/<Debug|Release>/MentorRoul
 
 A pull request's build can be tried the same way: CI attaches it to each run as the `MentorRouletteTracker` artifact. Unzip it, and point the dev plugin location at its `MentorRouletteTracker.dll`.
 
-Only one of the installed plugin and a dev build can be loaded at once.
+Only one of the installed plugin and a dev build can be loaded at once. A dev build (a CI artifact too) keeps its own settings and runs, in `pluginConfigs/MentorRouletteTracker/dev/` (`settings.json`, `runs.json`), so trying one never touches the installed plugin's runs, and each stays connected to its own site. To switch, disable one and enable the other.
 
-To try it against a dev copy of the site, change the server address in `/mrt config` → **Advanced** (disconnect first). Advanced only shows when the plugin's loaded as a dev plugin: the installed plugin always uses https://mentor.lavask.in, and goes back to it (disconnecting) if a dev build left another address in its settings. The game under Wine reaches `localhost` on the same PC. The plugin logs what it sees (each queue pop, each arrival and whether it came through the duty finder, and each run) to Dalamud's log, `/xllog`, at the Debug level.
+To try it against a dev copy of the site, change the server address in `/mrt config` → **Advanced** (disconnect first). Advanced only shows when the plugin's loaded as a dev plugin: the installed plugin always uses https://mentor.lavask.in. The game under Wine reaches `localhost` on the same PC. The plugin logs what it sees (each queue pop, each arrival and whether it came through the duty finder, and each run) to Dalamud's log, `/xllog`, at the Debug level.
 
 ## Releasing
 
@@ -91,14 +91,13 @@ What changed in each version is in `CHANGELOG.md` ([Keep a Changelog](https://ke
 
 1. On `dev`, in one commit: bump the version, rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`, add a new empty `[Unreleased]` above it, and update the compare links at the bottom (`[Unreleased]` from the new tag to `HEAD`, and the new version from the tag before it to its own; the first release has none before it, so link it to its tag).
 2. Merge `dev` into `main`.
-3. Tag the merge commit on `main` and push the tag:
 
-   ```bash
-   git tag -a vX.Y.Z -m vX.Y.Z <merge commit>
-   git push origin vX.Y.Z
-   ```
+That's all: there's no tag to push. Every push to `main` runs the Release workflow (`.github/workflows/release.yml`), which reads `<Version>`:
+- **Not released yet:** it checks the changelog has the version's section, builds and tests, and makes a GitHub release with the plugin's zip and the version's changelog, which tags the merge `vX.Y.Z`. Then it updates `repo.json` on `main`, so Dalamud offers the new version to everyone who has the repository, usually within a few minutes.
+- **Already released** (a merge that didn't bump the version, or the workflow's own `repo.json` commit): nothing.
+- **Released, but `repo.json` doesn't point at it** (the last release's `repo.json` push failed): it writes `repo.json` from that release, without building.
 
-The tag starts the Release workflow (`.github/workflows/release.yml`). It checks the tag matches `<Version>` and is on `main`, builds and tests, and makes a GitHub release with the plugin's zip and the version's changelog. Then it updates `repo.json` on `main`, so Dalamud offers the new version to everyone who has the repository, usually within a few minutes.
+Pushing a tag by hand doesn't release anything.
 
 It pushes `repo.json` with a deploy key, since `main`'s ruleset blocks the workflow's own token and GitHub Actions can't be added to the bypass list of a personal repository. Set up once:
 
@@ -107,4 +106,4 @@ It pushes `repo.json` with a deploy key, since `main`'s ruleset blocks the workf
 3. **Settings → Secrets and variables → Actions → New repository secret:** `RELEASE_DEPLOY_KEY`, with all of `release_key` (the private key) as its value. Then delete both files.
 4. **Settings → Rules → Rulesets → main → Bypass list → Add bypass:** **Deploy keys**, set to Always allow.
 
-If the workflow fails before making the release, fix the problem, then delete the tag (`git push origin :vX.Y.Z` and `git tag -d vX.Y.Z`) and tag again. If it made the release but failed to update `repo.json`, run its last step by hand.
+If the workflow fails before making the release (a missing changelog section, a failing test), nothing is released: fix it on `dev` and merge again. If it made the release but failed to update `repo.json`, re-run the workflow (or push to `main` again), and it finishes the release.
