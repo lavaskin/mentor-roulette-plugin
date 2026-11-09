@@ -20,7 +20,7 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
   - `Storage`: `RunLog` (in memory), `RunStore` (on disk), `JsonFile` (how each file's written), `BackgroundSaver`.
   - `Uploading`: `RunKeeper`, `Uploader`, `IUploadSettings`.
   - `Api`: talking to the site.
-  - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `Names`).
+  - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `Milestones`, `Names`).
 - **How it fits together:**
   - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, loaded in, duty commenced, wipe, duty complete, logout) to `Core.Recording.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute.
   - `Tracker` (plugin) hands each finished run to `Core.Uploading.RunKeeper`, which keeps it in `RunLog` (saved by `RunStore`) and uploads it through `Uploader` and `Api.MentorApiClient` if auto-upload's on.

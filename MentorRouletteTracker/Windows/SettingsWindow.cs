@@ -156,6 +156,8 @@ public sealed class SettingsWindow : Window
 			_tracker.SaveConfig();
 		}
 
+		Ui.Tooltip("And when runs that were waiting are logged.");
+
 		ImGui.Spacing();
 		ImGui.TextWrapped("With auto-upload on, don't log your Mentor Roulette runs on the site as well: each would count twice.");
 	}
