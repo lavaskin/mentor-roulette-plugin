@@ -59,6 +59,47 @@ public class MentorApiClientTests
 	}
 
 	[Fact]
+	public async Task ARunOnANewDuty_ComesBackWithWhatItFound_AndTheDutysTypeAndExpansion()
+	{
+		_handler.Respond(HttpStatusCode.Created, """
+			{
+				"mentorRouletteLogId": 5123, "runNumber": 123, "dutyName": "The Vault",
+				"dutyTypeLabel": "Dungeon", "expansionLabel": "3.0: Heavensward", "durationDropped": false,
+				"newDuty": { "dutiesSeen": 143, "dutiesInRoulette": 186, "ofType": { "seen": 70, "total": 103 }, "ofTypeInExpansion": { "seen": 16, "total": 16 } }
+			}
+			""");
+
+		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
+
+		Assert.Equal(
+			new LoggedRun(5123, 123, new NewDuty(143, 186, new SeenTotals(70, 103), new SeenTotals(16, 16), "Dungeon", "3.0: Heavensward")),
+			result.Value);
+	}
+
+	[Fact]
+	public async Task ANewDuty_WithNoTypeOrExpansion_HasNeither()
+	{
+		_handler.Respond(HttpStatusCode.Created, """
+			{ "mentorRouletteLogId": 5123, "runNumber": 123, "dutyTypeLabel": null, "expansionLabel": null,
+			  "newDuty": { "dutiesSeen": 1, "dutiesInRoulette": 186, "ofType": null, "ofTypeInExpansion": null } }
+			""");
+
+		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
+
+		Assert.Equal(new LoggedRun(5123, 123, new NewDuty(1, 186, null, null, null, null)), result.Value);
+	}
+
+	[Fact]
+	public async Task ARunOnADutySeenBefore_FoundNothing()
+	{
+		_handler.Respond(HttpStatusCode.Created, """{ "mentorRouletteLogId": 5123, "runNumber": 123, "dutyTypeLabel": "Dungeon", "expansionLabel": "3.0: Heavensward", "newDuty": null }""");
+
+		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
+
+		Assert.Equal(new LoggedRun(5123, 123), result.Value);
+	}
+
+	[Fact]
 	public async Task ARunsSiteId_CanBeALong_LikeTheApis()
 	{
 		_handler.Respond(HttpStatusCode.Created, """{ "mentorRouletteLogId": 3000000000, "runNumber": 123 }""");

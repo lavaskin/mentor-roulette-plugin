@@ -29,7 +29,35 @@ public sealed record ApiConnection(string ServerAddress, string Token);
 /// </summary>
 /// <param name="Id">Its id on the site, for its link</param>
 /// <param name="RunNumber">Its number on the site</param>
-public sealed record LoggedRun(long Id, int RunNumber);
+/// <param name="NewDuty">Set when it's the user's first run on its duty. Never set when the site already had the run,
+/// so a retried upload isn't announced twice.</param>
+public sealed record LoggedRun(long Id, int RunNumber, NewDuty? NewDuty = null);
+
+/// <summary>
+/// The duties seen once a new duty is logged, with it counted, out of the duties in the roulette, as the site counts
+/// them. The same again for the duty's type, and for that type in its expansion, which say whether the run finished
+/// either.
+/// </summary>
+/// <param name="OfType">Of the duty's type, in every expansion. Null when the duty has no type.</param>
+/// <param name="OfTypeInExpansion">Of the duty's type in its expansion. Null when the duty has no type or no
+/// expansion.</param>
+/// <param name="DutyType">The duty's type, as the site writes it: "Dungeon"</param>
+/// <param name="Expansion">The duty's expansion, as the site writes it: "3.0: Heavensward"</param>
+public sealed record NewDuty(
+	int DutiesSeen,
+	int DutiesInRoulette,
+	SeenTotals? OfType,
+	SeenTotals? OfTypeInExpansion,
+	string? DutyType,
+	string? Expansion);
+
+public sealed record SeenTotals(int Seen, int Total)
+{
+	/// <summary>
+	/// Every one of them seen. Never for none of none.
+	/// </summary>
+	public bool IsFinished => Total > 0 && Seen == Total;
+}
 
 public enum ApiResultKind
 {

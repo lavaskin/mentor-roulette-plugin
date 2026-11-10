@@ -1,3 +1,5 @@
+using MentorRouletteTracker.Core.Api;
+
 namespace MentorRouletteTracker.Core.Models;
 
 public enum RunOutcomeKind
@@ -29,4 +31,5 @@ public enum RunOutcomeKind
 /// <summary>
 /// What happened to a run when it ended, for the chat line
 /// </summary>
-public sealed record RunOutcome(RunOutcomeKind Kind, int? RunNumber = null, string? Reason = null);
+/// <param name="NewDuty">When it's <see cref="RunOutcomeKind.Logged"/> and the user's first run on its duty</param>
+public sealed record RunOutcome(RunOutcomeKind Kind, int? RunNumber = null, string? Reason = null, NewDuty? NewDuty = null);

@@ -1,3 +1,4 @@
+using MentorRouletteTracker.Core.Api;
 using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Core.Text;
@@ -9,9 +10,24 @@ namespace MentorRouletteTracker.Core.Text;
 /// </summary>
 public static class ChatLine
 {
+	private const string Tag = "[MRT]";
+
 	public static string Format(Run run, string dutyName, RunOutcome outcome)
 	{
-		return $"[MRT] {Report(run, dutyName, outcome)}";
+		return $"{Tag} {Report(run, dutyName, outcome)}";
+	}
+
+	/// <summary>
+	/// The line when runs that were waiting are logged, by any upload: "[MRT] Logged 3 runs that were waiting.", and
+	/// what they found, if they found a new duty. A run that just ended isn't one of them, since it has its own line.
+	/// </summary>
+	/// <param name="logged">In the order they were logged</param>
+	public static string FormatWaiting(IReadOnlyList<LoggedRun> logged)
+	{
+		var runs = logged.Count == 1 ? "1 run that was waiting" : $"{logged.Count} runs that were waiting";
+		var found = Milestones.Found(logged.Select(run => run.NewDuty).OfType<NewDuty>().ToList());
+		var line = $"{Tag} Logged {runs}.";
+		return found is null ? line : $"{line} {found}";
 	}
 
 	private static string Report(Run run, string dutyName, RunOutcome outcome)
@@ -20,6 +36,7 @@ public static class ChatLine
 
 		return outcome.Kind switch
 		{
+			RunOutcomeKind.Logged when outcome.NewDuty is { } newDuty => $"Logged #{outcome.RunNumber}, {what}. {Milestones.Found(newDuty)}",
 			RunOutcomeKind.Logged => $"Logged #{outcome.RunNumber}, {what}.",
 			RunOutcomeKind.NotConnected => $"Saved {what}: not connected.",
 			RunOutcomeKind.AutoUploadOff => $"Saved {what}: auto-upload is off.",

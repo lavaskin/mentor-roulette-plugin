@@ -41,6 +41,7 @@ public sealed class Plugin : IDalamudPlugin
 		_tracker = new Tracker(
 			PluginInterface,
 			Framework,
+			ClientState,
 			ChatGui,
 			Log,
 			new GameNames(DataManager),

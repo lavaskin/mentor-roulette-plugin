@@ -56,8 +56,16 @@ public sealed class MentorApiClient : IMentorApi
 
 		var result = await SendAsync<RunResponse>(connection, HttpMethod.Post, "api/plugin/runs", body, cancellationToken);
 		return result.Kind == ApiResultKind.Ok
-			? ApiResult<LoggedRun>.Ok(new LoggedRun(result.Value!.MentorRouletteLogId, result.Value.RunNumber))
+			? ApiResult<LoggedRun>.Ok(ToLoggedRun(result.Value!))
 			: new ApiResult<LoggedRun>(result.Kind, Message: result.Message);
+	}
+
+	private static LoggedRun ToLoggedRun(RunResponse response)
+	{
+		var newDuty = response.NewDuty is { } found
+			? new NewDuty(found.DutiesSeen, found.DutiesInRoulette, found.OfType, found.OfTypeInExpansion, response.DutyTypeLabel, response.ExpansionLabel)
+			: null;
+		return new LoggedRun(response.MentorRouletteLogId, response.RunNumber, newDuty);
 	}
 
 	private async Task<ApiResult<T>> SendAsync<T>(
@@ -176,5 +184,13 @@ public sealed class MentorApiClient : IMentorApi
 		int DurationSeconds,
 		DateTime DatePlayed);
 
-	private sealed record RunResponse(long MentorRouletteLogId, int RunNumber);
+	/// <param name="NewDuty">Optional, like the labels: older versions of the site don't send them</param>
+	private sealed record RunResponse(
+		long MentorRouletteLogId,
+		int RunNumber,
+		string? DutyTypeLabel = null,
+		string? ExpansionLabel = null,
+		NewDutyResponse? NewDuty = null);
+
+	private sealed record NewDutyResponse(int DutiesSeen, int DutiesInRoulette, SeenTotals? OfType, SeenTotals? OfTypeInExpansion);
 }
