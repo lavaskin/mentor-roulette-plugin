@@ -45,7 +45,8 @@ public sealed class Uploader
 
 	/// <summary>
 	/// At the end of each pass that logged any runs, with them in the order they were logged, before the next pass
-	/// starts. On the thread that uploaded them.
+	/// starts. On the thread that uploaded them, while the pass still holds the uploader, so a handler mustn't wait on
+	/// an upload.
 	/// </summary>
 	public event Action<IReadOnlyList<(Guid RunId, LoggedRun Logged)>>? Logged;
 
@@ -120,6 +121,15 @@ public sealed class Uploader
 				_gate.Release();
 			}
 		}
+	}
+
+	/// <summary>
+	/// Waits for the pass running, if there is one, without making one
+	/// </summary>
+	public async Task WaitForPassAsync(CancellationToken cancellationToken = default)
+	{
+		await _gate.WaitAsync(cancellationToken);
+		_gate.Release();
 	}
 
 	/// <summary>

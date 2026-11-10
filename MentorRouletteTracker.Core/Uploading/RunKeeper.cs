@@ -20,9 +20,9 @@ public sealed class RunKeeper
 	private readonly IUploadSettings _settings;
 
 	/// <summary>
-	/// The runs that just ended whose outcome isn't decided yet, with the new duty each one's upload found. Locked.
+	/// The runs that just ended whose outcome isn't decided yet, with what the site said once a pass logs one. Locked.
 	/// </summary>
-	private readonly Dictionary<Guid, NewDuty?> _ending = [];
+	private readonly Dictionary<Guid, LoggedRun?> _ending = [];
 
 	public RunKeeper(RunLog log, Uploader uploader, IUploadSettings settings)
 	{
@@ -34,7 +34,9 @@ public sealed class RunKeeper
 
 	/// <summary>
 	/// Runs that were waiting were logged, by any upload, in the order they were logged. Not the runs that just ended,
-	/// which <see cref="KeepAsync"/>'s outcome tells about. On the thread that uploaded them.
+	/// which <see cref="KeepAsync"/>'s outcome tells about. On the thread that uploaded them, before the outcome of a
+	/// run that ended in the same pass, and while the pass still holds the uploader, so a handler mustn't wait on an
+	/// upload.
 	/// </summary>
 	public event Action<IReadOnlyList<LoggedRun>>? WaitingRunsLogged;
 
@@ -64,27 +66,32 @@ public sealed class RunKeeper
 
 	private async Task<RunOutcome> UploadAsync(Run run, CancellationToken cancellationToken)
 	{
-		NewDuty? newDuty;
+		LoggedRun? logged;
 		try
 		{
 			if (AutoUploading)
 			{
 				await _uploader.UploadAsync(cancellationToken);
 			}
+			else
+			{
+				// A pass already running (like "Upload N runs") sends the runs that end meanwhile
+				await _uploader.WaitForPassAsync(cancellationToken);
+			}
 		}
 		finally
 		{
 			lock (_ending)
 			{
-				_ending.Remove(run.Id, out newDuty);
+				_ending.Remove(run.Id, out logged);
 			}
 		}
 
-		// Uploaded comes first: with auto-upload off, "Upload N runs" may have sent it meanwhile
-		var kept = _log.Find(run.Id) ?? run;
-		if (kept.Status == RunStatus.Uploaded)
+		// Logged comes first, even with auto-upload off. A pass that logs it after this tells it as a run that was
+		// waiting instead, so it's never told twice.
+		if (logged is not null)
 		{
-			return new RunOutcome(RunOutcomeKind.Logged, RunNumber: kept.RunNumber, NewDuty: newDuty);
+			return new RunOutcome(RunOutcomeKind.Logged, RunNumber: logged.RunNumber, NewDuty: logged.NewDuty);
 		}
 
 		if (ConnectionFor(_settings) is null)
@@ -97,6 +104,7 @@ public sealed class RunKeeper
 			return new RunOutcome(RunOutcomeKind.AutoUploadOff);
 		}
 
+		var kept = _log.Find(run.Id) ?? run;
 		return kept.Status switch
 		{
 			RunStatus.Failed => new RunOutcome(RunOutcomeKind.Refused, Reason: kept.FailedReason),
@@ -114,7 +122,7 @@ public sealed class RunKeeper
 			{
 				if (_ending.ContainsKey(id))
 				{
-					_ending[id] = run.NewDuty;
+					_ending[id] = run;
 				}
 				else
 				{

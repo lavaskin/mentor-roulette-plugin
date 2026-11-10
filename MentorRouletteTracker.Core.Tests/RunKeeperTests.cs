@@ -199,6 +199,28 @@ public class RunKeeperTests
 	}
 
 	[Fact]
+	public async Task WithAutoUploadOff_ARunThatEndsWhileUploadingByHand_GetsItsOwnLine_WhenThatPassLogsIt()
+	{
+		_settings.AutoUpload = false;
+		var waiting = new List<IReadOnlyList<LoggedRun>>();
+		_keeper.WaitingRunsLogged += waiting.Add;
+		_log.Add(Runs.Make(hour: 1));
+		_api.Answers[7] = ApiResult<LoggedRun>.Ok(new LoggedRun(5101, 101, NewVault));
+		var sending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		var answer = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		_api.Hold = (sending, answer);
+
+		var byHand = _uploader.UploadAsync();
+		await sending.Task;
+		var outcome = _keeper.KeepAsync(Runs.Make(hour: 2, duty: 7));
+		answer.SetResult();
+		await byHand;
+
+		Assert.Equal(new RunOutcome(RunOutcomeKind.Logged, RunNumber: 101, NewDuty: NewVault), await outcome);
+		Assert.Equal([new LoggedRun(5100, 100)], Assert.Single(waiting));
+	}
+
+	[Fact]
 	public async Task WithAutoUploadOff_UploadingByHand_LogsRunsThatWereWaiting()
 	{
 		_settings.AutoUpload = false;

@@ -10,9 +10,11 @@ namespace MentorRouletteTracker.Core.Text;
 /// </summary>
 public static class ChatLine
 {
+	private const string Tag = "[MRT]";
+
 	public static string Format(Run run, string dutyName, RunOutcome outcome)
 	{
-		return $"[MRT] {Report(run, dutyName, outcome)}";
+		return $"{Tag} {Report(run, dutyName, outcome)}";
 	}
 
 	/// <summary>
@@ -24,7 +26,8 @@ public static class ChatLine
 	{
 		var runs = logged.Count == 1 ? "1 run that was waiting" : $"{logged.Count} runs that were waiting";
 		var found = Milestones.Found(logged.Select(run => run.NewDuty).OfType<NewDuty>().ToList());
-		return found is null ? $"[MRT] Logged {runs}." : $"[MRT] Logged {runs}. {found}";
+		var line = $"{Tag} Logged {runs}.";
+		return found is null ? line : $"{line} {found}";
 	}
 
 	private static string Report(Run run, string dutyName, RunOutcome outcome)

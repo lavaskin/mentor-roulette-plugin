@@ -9,12 +9,24 @@ namespace MentorRouletteTracker.Core.Text;
 /// </summary>
 public static class Milestones
 {
+	private const string NewDutyFound = "New duty found!";
+
+	/// <summary>
+	/// What a milestone covers, smallest first
+	/// </summary>
+	private enum Scope
+	{
+		TypeInExpansion,
+		Type,
+		Roulette,
+	}
+
 	/// <summary>
 	/// What one new duty found
 	/// </summary>
 	public static string Found(NewDuty newDuty)
 	{
-		return Milestone(newDuty)?.Text ?? "New duty found!";
+		return Milestone(newDuty)?.Text ?? NewDutyFound;
 	}
 
 	/// <summary>
@@ -27,15 +39,15 @@ public static class Milestones
 	{
 		var biggest = newDuties
 			.Select(Milestone)
-			.OfType<(int Size, string Text)>()
-			.OrderBy(milestone => milestone.Size)
+			.OfType<(Scope Scope, string Text)>()
+			.OrderBy(milestone => milestone.Scope)
 			.Select(milestone => milestone.Text)
 			.LastOrDefault();
 
 		return biggest ?? newDuties.Count switch
 		{
 			0 => null,
-			1 => "New duty found!",
+			1 => NewDutyFound,
 			var count => $"{count} new duties found!",
 		};
 	}
@@ -43,11 +55,11 @@ public static class Milestones
 	/// <summary>
 	/// A duty with no type can only finish the whole roulette
 	/// </summary>
-	private static (int Size, string Text)? Milestone(NewDuty newDuty)
+	private static (Scope Scope, string Text)? Milestone(NewDuty newDuty)
 	{
 		if (new SeenTotals(newDuty.DutiesSeen, newDuty.DutiesInRoulette).IsFinished)
 		{
-			return (3, "Every duty in the roulette seen!");
+			return (Scope.Roulette, "Every duty in the roulette seen!");
 		}
 
 		if (string.IsNullOrWhiteSpace(newDuty.DutyType))
@@ -58,12 +70,12 @@ public static class Milestones
 		var type = newDuty.DutyType.Trim().ToLowerInvariant();
 		if (newDuty.OfType?.IsFinished == true)
 		{
-			return (2, $"Every {type} seen!");
+			return (Scope.Type, $"Every {type} seen!");
 		}
 
 		if (ExpansionName(newDuty.Expansion) is { } expansion && newDuty.OfTypeInExpansion?.IsFinished == true)
 		{
-			return (1, $"Every {expansion} {type} seen!");
+			return (Scope.TypeInExpansion, $"Every {expansion} {type} seen!");
 		}
 
 		return null;

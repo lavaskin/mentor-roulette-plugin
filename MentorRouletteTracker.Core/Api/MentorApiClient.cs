@@ -184,7 +184,7 @@ public sealed class MentorApiClient : IMentorApi
 		int DurationSeconds,
 		DateTime DatePlayed);
 
-	/// <param name="NewDuty">Not sent by a site from before new duties were announced to the plugin</param>
+	/// <param name="NewDuty">Optional, like the labels: older versions of the site don't send them</param>
 	private sealed record RunResponse(
 		long MentorRouletteLogId,
 		int RunNumber,
