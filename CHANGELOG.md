@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- An install guide that goes from installing the plugin to your first run logged, which the site's Plugin section links to (mentor-roulette-tracker#149).
+
 ### Fixed
 
 - The installed plugin shows its icon in Dalamud's plugin installer, and no longer offers Dalamud's feedback form, which went to Dalamud's team rather than to the plugin's author (#12).
