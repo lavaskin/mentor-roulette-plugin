@@ -27,7 +27,7 @@ public sealed class Configuration : IPluginConfiguration, IUploadSettings
 	public bool AutoUpload { get; set; } = true;
 
 	/// <summary>
-	/// A line in chat when a run ends
+	/// A line in chat when a run ends, and when runs that were waiting are logged
 	/// </summary>
 	public bool ChatLine { get; set; } = true;
 }

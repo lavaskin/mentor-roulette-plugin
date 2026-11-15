@@ -249,4 +249,47 @@ public class UploaderTests
 
 		Assert.Empty(_api.Sent);
 	}
+
+	[Fact]
+	public async Task APass_SaysWhichRunsItLogged_InOrder_WithWhatTheSiteSaid()
+	{
+		var newDuty = new NewDuty(5, 10, null, null, "Dungeon", "3.0: Heavensward");
+		_api.Answers[7] = ApiResult<LoggedRun>.Ok(new LoggedRun(5007, 7, newDuty));
+		var older = Runs.Make(hour: 1);
+		var refused = Runs.Make(hour: 2, duty: RefusedDuty);
+		var newer = Runs.Make(hour: 3, duty: 7);
+		var uploader = UploaderFor(new RunLog([newer, refused, older]));
+		var passes = new List<IReadOnlyList<(Guid RunId, LoggedRun Logged)>>();
+		uploader.Logged += passes.Add;
+
+		await uploader.UploadAsync();
+
+		var pass = Assert.Single(passes);
+		Assert.Equal([(older.Id, new LoggedRun(5100, 100)), (newer.Id, new LoggedRun(5007, 7, newDuty))], pass);
+	}
+
+	[Fact]
+	public async Task APassThatLogsNothing_SaysNothing()
+	{
+		var uploader = UploaderFor(new RunLog([Runs.Make(hour: 1, duty: DownDuty)]));
+		var passes = 0;
+		uploader.Logged += _ => passes++;
+
+		await uploader.UploadAsync();
+
+		Assert.Equal(0, passes);
+	}
+
+	[Fact]
+	public async Task APassThatStopsPartWay_StillSaysWhatItLogged()
+	{
+		var logged = Runs.Make(hour: 1);
+		var uploader = UploaderFor(new RunLog([logged, Runs.Make(hour: 2, duty: DownDuty)]));
+		var passes = new List<IReadOnlyList<(Guid RunId, LoggedRun Logged)>>();
+		uploader.Logged += passes.Add;
+
+		await uploader.UploadAsync();
+
+		Assert.Equal([logged.Id], Assert.Single(passes).Select(run => run.RunId));
+	}
 }

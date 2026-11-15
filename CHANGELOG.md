@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The chat line says when a run found a new duty, or finished a milestone like every Heavensward dungeon (#14).
+- Runs that were waiting to upload get a chat line when they're logged, like "Logged 3 runs that were waiting.", with any new duty or milestone they found (#14).
+
 ### Fixed
 
 - The installed plugin shows its icon in Dalamud's plugin installer, and no longer offers Dalamud's feedback form, which went to Dalamud's team rather than to the plugin's author (#12).
