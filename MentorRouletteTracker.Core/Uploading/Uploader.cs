@@ -44,6 +44,13 @@ public sealed class Uploader
 	public bool IsUploading => _gate.CurrentCount == 0;
 
 	/// <summary>
+	/// At the end of each pass that logged any runs, with them in the order they were logged, before the next pass
+	/// starts. On the thread that uploaded them, while the pass still holds the uploader, so a handler mustn't wait on
+	/// an upload.
+	/// </summary>
+	public event Action<IReadOnlyList<(Guid RunId, LoggedRun Logged)>>? Logged;
+
+	/// <summary>
 	/// Uploads every run that isn't uploaded, oldest first, until one has to wait. Runs that end while it's
 	/// uploading go in the same pass. If a pass is already running, waits for it, then makes its own. Each run goes
 	/// with the connection as it is then, so disconnecting stops the pass.
@@ -51,6 +58,7 @@ public sealed class Uploader
 	public async Task UploadAsync(CancellationToken cancellationToken = default)
 	{
 		await _gate.WaitAsync(cancellationToken);
+		var logged = new List<(Guid, LoggedRun)>();
 		try
 		{
 			var tried = new HashSet<Guid>();
@@ -73,6 +81,7 @@ public sealed class Uploader
 							RunNumber = result.Value.RunNumber,
 							FailedReason = null,
 						});
+						logged.Add((run.Id, result.Value!));
 						_needsReconnect = false;
 						_problem = null;
 						break;
@@ -100,8 +109,27 @@ public sealed class Uploader
 		}
 		finally
 		{
-			_gate.Release();
+			try
+			{
+				if (logged.Count > 0)
+				{
+					Logged?.Invoke(logged);
+				}
+			}
+			finally
+			{
+				_gate.Release();
+			}
 		}
+	}
+
+	/// <summary>
+	/// Waits for the pass running, if there is one, without making one
+	/// </summary>
+	public async Task WaitForPassAsync(CancellationToken cancellationToken = default)
+	{
+		await _gate.WaitAsync(cancellationToken);
+		_gate.Release();
 	}
 
 	/// <summary>
