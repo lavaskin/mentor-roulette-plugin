@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The chat line says when a run found a new duty, or finished a milestone like every Heavensward dungeon (#14).
 - Runs that were waiting to upload get a chat line when they're logged, like "Logged 3 runs that were waiting.", with any new duty or milestone they found (#14).
+- An install guide that goes from installing the plugin to your first run logged, linked from the README's Installing section (mentor-roulette-tracker#149).
 
 ### Fixed
 
