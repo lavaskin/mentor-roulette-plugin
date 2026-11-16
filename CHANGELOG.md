@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- An install guide that goes from installing the plugin to your first run logged, which the site's Plugin section links to (mentor-roulette-tracker#149).
+- An install guide that goes from installing the plugin to your first run logged, linked from the README's Installing section (mentor-roulette-tracker#149).
 
 ### Fixed
 
