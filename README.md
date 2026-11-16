@@ -18,7 +18,7 @@ It only ever records the Mentor Roulette. Other roulettes, and duties you queue 
 
 ## Using it
 
-Once it's [connected](docs/installing.md#2-connect), the plugin logs each run to your account when it ends, and says so in chat ("[MRT] Logged #1234, The Vault, 32m 10s."). Click the line to open your runs. One connection covers every character on the install.
+Once it's [connected](docs/installing.md#2-connect), the plugin logs each run to your account when it ends, and says so in chat ("[MRT] Logged #1234, The Vault, 32m 10s."), adding "New duty found!" for your first run on a duty, or the milestone it finished ("Every Heavensward dungeon seen!"). Runs that were waiting get a line of their own when they're logged ("[MRT] Logged 3 runs that were waiting."). Click a line to open your runs. One connection covers every character on the install.
 
 `/mrt` opens your runs, and `/mrt config` the settings.
 

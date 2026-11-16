@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dalamud.Game.Text.SeStringHandling;
@@ -27,6 +29,7 @@ internal sealed class Tracker : IDisposable
 	private const uint OpenRunsLinkId = 1;
 
 	private readonly IFramework _framework;
+	private readonly IClientState _clientState;
 	private readonly IChatGui _chat;
 	private readonly IPluginLog _log;
 	private readonly IMentorApi _api;
@@ -35,9 +38,22 @@ internal sealed class Tracker : IDisposable
 	private readonly CancellationTokenSource _stopping = new();
 	private readonly DalamudLinkPayload _openRunsLink;
 
+	/// <summary>
+	/// Chat lines said on any thread, for the framework thread to print. One queue, rather than a framework call per
+	/// line, keeps them in the order they were said: the waiting runs' line is said before the outcome of a run that
+	/// ended in the same upload, so it comes first.
+	/// </summary>
+	private readonly ConcurrentQueue<(string Line, bool AfterLogin)> _toSay = new();
+
+	/// <summary>
+	/// Chat lines waiting for the player to log in, on the framework thread
+	/// </summary>
+	private readonly List<string> _afterLogin = [];
+
 	public Tracker(
 		IDalamudPluginInterface pluginInterface,
 		IFramework framework,
+		IClientState clientState,
 		IChatGui chat,
 		IPluginLog log,
 		GameNames names,
@@ -46,6 +62,7 @@ internal sealed class Tracker : IDisposable
 		Action openRuns)
 	{
 		_framework = framework;
+		_clientState = clientState;
 		_chat = chat;
 		_log = log;
 		_api = api;
@@ -78,6 +95,8 @@ internal sealed class Tracker : IDisposable
 
 		Uploader = new Uploader(Log, api, () => RunKeeper.ConnectionFor(Config));
 		Keeper = new RunKeeper(Log, Uploader, Config);
+		Keeper.WaitingRunsLogged += OnWaitingRunsLogged;
+		_clientState.Login += OnLogin;
 
 		Background(() => Keeper.ResumeAsync(_stopping.Token), "upload the runs waiting");
 	}
@@ -98,6 +117,8 @@ internal sealed class Tracker : IDisposable
 	public void Dispose()
 	{
 		_stopping.Cancel();
+		_clientState.Login -= OnLogin;
+		Keeper.WaitingRunsLogged -= OnWaitingRunsLogged;
 		_chat.RemoveChatLinkHandler();
 		Log.Changed -= _runsSaver.Request;
 		_runsSaver.Flush();
@@ -130,12 +151,68 @@ internal sealed class Tracker : IDisposable
 
 		async Task SayAsync()
 		{
-			var line = ChatLine.Format(run, duty, await outcome);
-			if (Config.ChatLine && !_stopping.IsCancellationRequested)
+			Say(ChatLine.Format(run, duty, await outcome), afterLogin: false);
+		}
+	}
+
+	/// <summary>
+	/// Runs that were waiting were logged, on the thread that uploaded them: the chat line, once the player's logged in,
+	/// since the plugin starts at the title screen and uploads straight away
+	/// </summary>
+	private void OnWaitingRunsLogged(IReadOnlyList<LoggedRun> logged)
+	{
+		Say(ChatLine.FormatWaiting(logged), afterLogin: true);
+	}
+
+	/// <summary>
+	/// Prints a chat line, from any thread, after every line said before it
+	/// </summary>
+	/// <param name="afterLogin">Held until the player's logged in, if they aren't</param>
+	private void Say(string line, bool afterLogin)
+	{
+		if (_stopping.IsCancellationRequested)
+		{
+			return;
+		}
+
+		_toSay.Enqueue((line, afterLogin));
+		Background(() => _framework.RunOnFrameworkThread(PrintSaid), "print a chat line");
+	}
+
+	/// <summary>
+	/// Prints every line said so far, in order, on the framework thread
+	/// </summary>
+	private void PrintSaid()
+	{
+		while (_toSay.TryDequeue(out var said))
+		{
+			if (!Config.ChatLine || _stopping.IsCancellationRequested)
 			{
-				await _framework.RunOnFrameworkThread(() => _chat.Print(ChatMessage(line)));
+				continue;
+			}
+
+			if (said.AfterLogin && !_clientState.IsLoggedIn)
+			{
+				_afterLogin.Add(said.Line);
+			}
+			else
+			{
+				_chat.Print(ChatMessage(said.Line));
 			}
 		}
+	}
+
+	private void OnLogin()
+	{
+		if (Config.ChatLine && !_stopping.IsCancellationRequested)
+		{
+			foreach (var line in _afterLogin)
+			{
+				_chat.Print(ChatMessage(line));
+			}
+		}
+
+		_afterLogin.Clear();
 	}
 
 	/// <summary>
