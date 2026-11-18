@@ -1,6 +1,6 @@
 # AGENTS.md - mentor-roulette-plugin
 
-A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and logs it to the user's account on Mentor Roulette Tracker (<https://mentor.lavask.in>). Its companions are the site (`lavaskin/mentor-roulette-tracker`) and its API (`lavaskin/ffxiv_api`), which this talks to.
+A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and logs it to the user's account on Mentor Roulette Tracker (<https://mentorroulette.com>). Its companions are the site (`lavaskin/mentor-roulette-tracker`) and its API (`lavaskin/ffxiv_api`), which this talks to.
 
 ## The one rule
 

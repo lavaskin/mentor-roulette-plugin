@@ -21,7 +21,7 @@ public interface IMentorApi
 /// <summary>
 /// Where to send requests, and the plugin token to send with them
 /// </summary>
-/// <param name="ServerAddress">The site, like <c>https://mentor.lavask.in</c></param>
+/// <param name="ServerAddress">The site, like <c>https://mentorroulette.com</c></param>
 public sealed record ApiConnection(string ServerAddress, string Token);
 
 /// <summary>
