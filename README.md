@@ -1,4 +1,4 @@
-# Mentor Roulette Tracker (Dalamud plugin)
+# Mentor Roulette Tracker
 
 A [Dalamud](https://github.com/goatcorp/Dalamud) plugin for FINAL FANTASY XIV that records each Mentor Roulette run you play and logs it to your account on [Mentor Roulette Tracker](https://mentorroulette.com): the duty, your job, whether it was cleared, whether you joined as a replacement, the wipes and your time.
 
