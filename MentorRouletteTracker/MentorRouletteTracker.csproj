@@ -8,9 +8,7 @@
     <Author>lavaskin</Author>
     <Name>Mentor Roulette Tracker</Name>
     <Punchline>Logs your Mentor Roulette runs to Mentor Roulette Tracker.</Punchline>
-    <Description>Records each Mentor Roulette run you play: the duty, your job, whether it was cleared, whether you joined as a replacement, how many times the party wiped and your time in the duty. Connect it to your account on Mentor Roulette Tracker (mentor.lavask.in) and it logs them there for you, or keep them in the plugin and upload them later.
-
-It only ever records the Mentor Roulette. Other roulettes, and duties you queue for yourself, are ignored.</Description>
+    <Description>Keeps track of your Mentor Roulette runs and logs them to your account on Mentor Roulette Tracker (mentor.lavask.in).</Description>
     <RepoUrl>https://github.com/lavaskin/mentor-roulette-plugin</RepoUrl>
     <Tags>mentor;roulette;duty;tracker;stats</Tags>
     <!-- An installed plugin's icon and feedback button come from this manifest in its folder, not from repo.json.

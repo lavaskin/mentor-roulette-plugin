@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Utility;
+using MentorRouletteTracker.Core.Api;
 
 namespace MentorRouletteTracker.Windows;
 
@@ -43,6 +44,16 @@ internal static class Ui
 		{
 			ImGui.SetTooltip(url);
 		}
+	}
+
+	/// <summary>
+	/// "Connected as name", with the name linking to the Account page on the site
+	/// </summary>
+	public static void ConnectedAs(string? username, string serverAddress)
+	{
+		ImGui.TextUnformatted("Connected as ");
+		ImGui.SameLine(0, 0);
+		WebLink(username ?? "", ServerAddress.Link(serverAddress, "account"));
 	}
 
 	public static void Wrapped(Vector4 colour, string text)
