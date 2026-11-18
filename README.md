@@ -24,11 +24,12 @@ Once it's [connected](docs/installing.md#2-connect), the plugin logs each run to
 
 Without connecting, it still records every run and keeps it, so you can connect and upload them later.
 
-- **Your runs** (`/mrt`): every run the plugin has recorded, newest first, kept forever whether it's uploaded or not. An uploaded run's number links to it on the site.
+- **Your runs** (`/mrt`): every run the plugin has recorded, newest first, uploaded or not. An uploaded run's number links to it on the site.
 - **Upload N runs** sends every run that isn't uploaded, oldest first. Runs are numbered in the order they reach the site, so runs uploaded late come after any runs you've logged since, but keep the dates they were played.
 - **Auto-upload** (on by default) uploads each run when it ends. With it on, don't log the same runs on the site as well: each would count twice.
 - **If the site can't be reached,** the run waits, and it tries again when the plugin starts and after your next run. **If the site refuses a run,** it's marked Failed with the reason, and you can retry it. A retry can't log a run twice.
 - **Fixing a run:** upload it, then edit it on the site. A run that isn't uploaded can be deleted.
+- **Deleting runs:** the plugin keeps every run until you delete it. Settings can delete the uploaded runs, or all of them, from the plugin. Runs already on the site stay there.
 
 ### When a run counts
 

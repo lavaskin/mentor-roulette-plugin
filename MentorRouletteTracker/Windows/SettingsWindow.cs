@@ -1,10 +1,12 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using MentorRouletteTracker.Core.Api;
+using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Windows;
 
@@ -17,6 +19,8 @@ public sealed class SettingsWindow : Window
 
 	private readonly Tracker _tracker;
 	private readonly Action _openRuns;
+	private readonly ConfirmDelete _deleteUploaded = new("Delete uploaded runs?##DeleteUploaded");
+	private readonly ConfirmDelete _deleteAll = new("Delete all runs?##DeleteAll");
 	private string _token = string.Empty;
 	private string _serverAddress;
 	private string? _serverProblem;
@@ -41,12 +45,19 @@ public sealed class SettingsWindow : Window
 		ImGui.Spacing();
 		DrawOptions();
 
+		ImGui.Spacing();
+		ImGui.Separator();
+		ImGui.Spacing();
+		DrawRunsKept();
+
 		// Only for trying the plugin against a dev copy of the site
 		ImGui.Spacing();
 		if (_tracker.IsDev && ImGui.CollapsingHeader("Advanced (dev builds only)"))
 		{
 			DrawServerAddress();
 		}
+
+		DrawDeleteConfirms();
 	}
 
 	private void DrawConnection()
@@ -157,9 +168,97 @@ public sealed class SettingsWindow : Window
 		}
 
 		Ui.Tooltip("And when runs that were waiting are logged.");
+	}
 
-		ImGui.Spacing();
-		ImGui.TextWrapped("With auto-upload on, don't log your Mentor Roulette runs on the site as well: each would count twice.");
+	private void DrawRunsKept()
+	{
+		var (total, uploaded) = RunCounts();
+		ImGui.TextUnformatted(RunsKept(total, uploaded));
+
+		var idle = !_tracker.Uploader.IsUploading;
+		if (Ui.Button("Delete uploaded runs", idle && uploaded > 0))
+		{
+			_deleteUploaded.Open();
+		}
+
+		ImGui.SameLine();
+		if (Ui.Button("Delete all runs", idle && total > 0))
+		{
+			_deleteAll.Open();
+		}
+	}
+
+	private void DrawDeleteConfirms()
+	{
+		if (_deleteUploaded.Draw(DeleteUploadedLines))
+		{
+			_tracker.DeleteUploaded();
+		}
+
+		if (_deleteAll.Draw(DeleteAllLines))
+		{
+			_tracker.DeleteAll();
+		}
+	}
+
+	private (int Total, int Uploaded) RunCounts()
+	{
+		var runs = _tracker.Log.Runs;
+		return (runs.Count, runs.Count(run => run.Status == RunStatus.Uploaded));
+	}
+
+	private static string RunsKept(int total, int uploaded)
+	{
+		if (total == 0)
+		{
+			return "No runs kept in the plugin.";
+		}
+
+		var which = (total, uploaded) switch
+		{
+			(1, 0) => "not uploaded",
+			(1, _) => "uploaded",
+			(_, 0) => "none of them uploaded",
+			_ when uploaded == total => "all of them uploaded",
+			_ => $"{uploaded:N0} of them uploaded",
+		};
+		return $"Runs kept in the plugin: {total:N0}, {which}.";
+	}
+
+	private string[]? DeleteUploadedLines()
+	{
+		var (_, uploaded) = RunCounts();
+		if (uploaded == 0)
+		{
+			return null;
+		}
+
+		return [
+			$"Delete {Ui.Plural(uploaded, "uploaded run", "uploaded runs")}?",
+			uploaded == 1 ? "It stays on the site." : "They stay on the site.",
+		];
+	}
+
+	private string[]? DeleteAllLines()
+	{
+		var (total, uploaded) = RunCounts();
+		if (total == 0)
+		{
+			return null;
+		}
+
+		var notUploaded = total - uploaded;
+		var question = total == 1 ? "Delete 1 run?" : $"Delete all {total:N0} runs?";
+		var then = notUploaded switch
+		{
+			0 => "Runs already on the site stay there.",
+			_ when notUploaded == total => total == 1
+				? "It isn't uploaded, so it'll be gone for good."
+				: "None of them are uploaded, so they'll be gone for good.",
+			1 => "1 isn't uploaded, so it'll be gone for good. Runs already on the site stay there.",
+			_ => $"{notUploaded:N0} aren't uploaded, so they'll be gone for good. Runs already on the site stay there.",
+		};
+		return [question, then];
 	}
 
 	private void DrawServerAddress()

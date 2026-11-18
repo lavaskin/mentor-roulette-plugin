@@ -55,11 +55,35 @@ public sealed class RunLog
 	/// <returns>Whether it was deleted</returns>
 	public bool Delete(Guid id)
 	{
-		var deleted = false;
+		return Remove(run => run.Id == id && run.Status != RunStatus.Uploaded) > 0;
+	}
+
+	/// <summary>
+	/// Deletes every uploaded run. The site still has them.
+	/// </summary>
+	/// <returns>How many were deleted</returns>
+	public int DeleteUploaded()
+	{
+		return Remove(run => run.Status == RunStatus.Uploaded);
+	}
+
+	/// <summary>
+	/// Deletes every run, uploaded or not
+	/// </summary>
+	/// <returns>How many were deleted</returns>
+	public int DeleteAll()
+	{
+		return Remove(_ => true);
+	}
+
+	private int Remove(Func<Run, bool> deleting)
+	{
+		var deleted = 0;
 		Change(runs =>
 		{
-			var kept = runs.Where(run => run.Id != id || run.Status == RunStatus.Uploaded).ToList();
-			deleted = kept.Count < runs.Count();
+			var all = runs.ToList();
+			var kept = all.Where(run => !deleting(run)).ToList();
+			deleted = all.Count - kept.Count;
 			return kept;
 		});
 		return deleted;

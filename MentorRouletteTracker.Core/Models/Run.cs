@@ -12,7 +12,7 @@ public enum RunStatus
 }
 
 /// <summary>
-/// A finished Mentor Roulette run, kept forever in the local store whether it's uploaded or not.
+/// A finished Mentor Roulette run, kept in the local store whether it's uploaded or not, until the user deletes it.
 /// </summary>
 public sealed record Run
 {

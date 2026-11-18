@@ -261,6 +261,22 @@ internal sealed class Tracker : IDisposable
 	}
 
 	/// <summary>
+	/// Deletes the uploaded runs from the plugin. The site keeps them.
+	/// </summary>
+	public void DeleteUploaded()
+	{
+		Background(() => Uploader.DeleteUploadedAsync(_stopping.Token), "delete the uploaded runs");
+	}
+
+	/// <summary>
+	/// Deletes every run from the plugin. Runs on the site stay there.
+	/// </summary>
+	public void DeleteAll()
+	{
+		Background(() => Uploader.DeleteAllAsync(_stopping.Token), "delete the runs");
+	}
+
+	/// <summary>
 	/// Checks a token with the site, and keeps it if the site accepts it
 	/// </summary>
 	/// <returns>The site's answer, on the framework thread with the settings already changed</returns>

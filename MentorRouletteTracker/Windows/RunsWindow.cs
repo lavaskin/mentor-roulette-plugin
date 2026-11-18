@@ -13,13 +13,12 @@ namespace MentorRouletteTracker.Windows;
 /// </summary>
 public sealed class RunsWindow : Window
 {
-	private const string DeletePopup = "Delete run?##DeleteRun";
-
 	private const string NumberingNote = "Runs are numbered in the order they reach the site. These will come after any "
 		+ "runs you've logged since, but keep the dates they were played.";
 
 	private readonly Tracker _tracker;
 	private readonly Action _openSettings;
+	private readonly ConfirmDelete _deleteRun = new("Delete run?##DeleteRun");
 	private Run? _deleting;
 
 	internal RunsWindow(Tracker tracker, Action openSettings) : base("Mentor Roulette Tracker##Runs")
@@ -101,7 +100,7 @@ public sealed class RunsWindow : Window
 		var runs = _tracker.Log.Runs;
 		if (runs.Count == 0)
 		{
-			ImGui.TextWrapped("No runs recorded yet. Play a Mentor Roulette and it'll show here.");
+			ImGui.TextUnformatted("No runs recorded");
 			return;
 		}
 
@@ -176,6 +175,7 @@ public sealed class RunsWindow : Window
 		if (run.Status != RunStatus.Uploaded && Ui.Button("Delete", !_tracker.Uploader.IsUploading))
 		{
 			_deleting = run;
+			_deleteRun.Open();
 		}
 
 		ImGui.PopID();
@@ -205,39 +205,16 @@ public sealed class RunsWindow : Window
 
 	private void DrawDeleteConfirm()
 	{
-		// Opened here rather than in the run's row, whose id would be part of the popup's
-		if (_deleting is not null && !ImGui.IsPopupOpen(DeletePopup))
+		var deleting = _deleting;
+		if (_deleteRun.Draw(() => deleting is null
+			? null
+			: [
+				$"Delete {_tracker.Names.Duty(deleting.GameContentId)} on {DateText.Format(deleting.DatePlayed)}?",
+				"It hasn't been uploaded, so it'll be gone for good.",
+			]))
 		{
-			ImGui.OpenPopup(DeletePopup);
-		}
-
-		if (!ImGui.BeginPopupModal(DeletePopup, ImGuiWindowFlags.AlwaysAutoResize))
-		{
-			return;
-		}
-
-		if (_deleting is { } run)
-		{
-			ImGui.TextUnformatted($"Delete {_tracker.Names.Duty(run.GameContentId)} on {DateText.Format(run.DatePlayed)}?");
-			ImGui.TextUnformatted("It hasn't been uploaded, so it'll be gone for good.");
-			ImGui.Spacing();
-
-			if (ImGui.Button("Delete"))
-			{
-				_tracker.Delete(run.Id);
-				_deleting = null;
-				ImGui.CloseCurrentPopup();
-			}
-
-			ImGui.SameLine();
-		}
-
-		if (ImGui.Button("Cancel") || _deleting is null)
-		{
+			_tracker.Delete(deleting!.Id);
 			_deleting = null;
-			ImGui.CloseCurrentPopup();
 		}
-
-		ImGui.EndPopup();
 	}
 }
