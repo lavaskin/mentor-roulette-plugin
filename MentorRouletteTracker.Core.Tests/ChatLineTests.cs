@@ -35,6 +35,14 @@ public class ChatLineTests
 	}
 
 	[Fact]
+	public void ARunDropped_SaysWhy_AndThatItCanBeLoggedOnTheSite()
+	{
+		Assert.Equal(
+			"[MRT] The Vault wasn't logged, since the plugin was off for part of it. You can log it on the site.",
+			ChatLine.FormatEndMissed("the Vault"));
+	}
+
+	[Fact]
 	public void TheJob_Clear_Wipes_AndReplacement_AreLeftOut()
 	{
 		var run = Cleared with { Cleared = false, Replacement = true, Wipes = 1, DurationSeconds = 242 };

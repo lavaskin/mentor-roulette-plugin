@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A run you turned the plugin off during is no longer logged as not cleared, and a chat line says when one isn't logged (#16).
+
 ## [1.1.0] - 2026-11-15
 
 ### Added

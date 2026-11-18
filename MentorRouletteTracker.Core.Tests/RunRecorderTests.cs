@@ -502,6 +502,139 @@ public class RunRecorderTests
 		Assert.False(restarted.IsAway);
 	}
 
+	/// <summary>
+	/// A run in the Vault, turned off at 130s with 100s on its clock and one wipe, restored into a new recorder whose
+	/// dropped runs' duties go into <paramref name="dropped"/>
+	/// </summary>
+	private RunRecorder TurnOffAndRestart(List<uint> dropped)
+	{
+		Enter();
+		_recorder.Wiped();
+		var saved = _recorder.TurnedOff(At(130));
+		Assert.True(saved!.PluginTurnedOff);
+
+		var restarted = new RunRecorder();
+		restarted.EndMissed += dropped.Add;
+		restarted.Restore(saved);
+		return restarted;
+	}
+
+	[Fact]
+	public void ARunTurnedOff_ThatEndedWhileOff_IsDropped_AndSaysSo()
+	{
+		var dropped = new List<uint>();
+		var restarted = TurnOffAndRestart(dropped);
+
+		Assert.Null(restarted.Arrived(0, throughDutyFinder: false, At(2000)));
+
+		Assert.Equal([Vault], dropped);
+		Assert.False(restarted.IsAway);
+		Assert.Null(restarted.Snapshot(At(2000)));
+	}
+
+	[Fact]
+	public void ARunTurnedOff_ThenClearedOnceBack_IsLogged_CountingTheTimeOff()
+	{
+		var dropped = new List<uint>();
+		var restarted = TurnOffAndRestart(dropped);
+
+		// Back on ten minutes later, still in the duty: the player was there all along
+		Assert.Null(restarted.Arrived(Vault, throughDutyFinder: true, At(730)));
+		Assert.False(restarted.LoadedIn(At(730)));
+		restarted.Wiped();
+		var run = restarted.Completed(At(830));
+
+		Assert.True(run!.Cleared);
+		Assert.Equal(100 + 600 + 100, run.DurationSeconds);
+		Assert.Equal(2, run.Wipes);
+		Assert.Empty(dropped);
+	}
+
+	[Fact]
+	public void ARunTurnedOff_ThenLeftOnceBack_IsDropped()
+	{
+		// It may have been cleared while the plugin was off
+		var dropped = new List<uint>();
+		var restarted = TurnOffAndRestart(dropped);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(730));
+
+		Assert.Null(restarted.Arrived(0, throughDutyFinder: false, At(800)));
+		Assert.Equal([Vault], dropped);
+	}
+
+	[Fact]
+	public void ARunTurnedOff_StaysMarked_AcrossACrashOnceBack()
+	{
+		var dropped = new List<uint>();
+		var restarted = TurnOffAndRestart(dropped);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(730));
+		var saved = restarted.Snapshot(At(800));
+		Assert.True(saved!.PluginTurnedOff);
+		Assert.False(saved.ClockRanWhileOff);
+
+		var crashed = new RunRecorder();
+		crashed.EndMissed += dropped.Add;
+		crashed.Restore(saved);
+
+		Assert.Null(crashed.Arrived(0, throughDutyFinder: false, At(5000)));
+		Assert.Equal([Vault], dropped);
+	}
+
+	[Fact]
+	public void ARunTurnedOffTwice_BeforeComingBack_StillCountsTheTimeOff()
+	{
+		var restarted = TurnOffAndRestart([]);
+		var saved = restarted.TurnedOff(At(300));
+		Assert.True(saved!.ClockRanWhileOff);
+		Assert.Equal(At(130), saved.LastSeenAt);
+
+		var again = new RunRecorder();
+		again.Restore(saved);
+		again.Arrived(Vault, throughDutyFinder: true, At(730));
+
+		Assert.Equal(100 + 600 + 100, again.Completed(At(830))!.DurationSeconds);
+	}
+
+	[Fact]
+	public void ARunTurnedOffWhileLoggedOut_DoesntCountTheTimeOff()
+	{
+		Enter();
+		_recorder.LoggedOut(At(130));
+		var saved = _recorder.TurnedOff(At(500));
+		Assert.False(saved!.ClockRanWhileOff);
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(730));
+		Assert.True(restarted.LoadedIn(At(740)));
+
+		Assert.Equal(100 + 100, restarted.Completed(At(840))!.DurationSeconds);
+	}
+
+	[Fact]
+	public void ARunTurnedOffBeforeTheDutyCommenced_StartsTheClockWhenItsSeen()
+	{
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.LoadedIn(At(25));
+		_recorder.JobKnown(Paladin);
+		var saved = _recorder.TurnedOff(At(26));
+		Assert.False(saved!.ClockRanWhileOff);
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(200));
+		Assert.True(restarted.Commenced(At(200)));
+
+		Assert.Equal(100, restarted.Completed(At(300))!.DurationSeconds);
+	}
+
+	[Fact]
+	public void TurningOff_WithNoRun_SavesNothing()
+	{
+		Assert.Null(_recorder.TurnedOff(At(0)));
+	}
+
 	[Fact]
 	public void TheSnapshot_CountsTheTimeUpToNow()
 	{

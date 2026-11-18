@@ -43,12 +43,12 @@ internal sealed class Tracker : IDisposable
 	/// line, keeps them in the order they were said: the waiting runs' line is said before the outcome of a run that
 	/// ended in the same upload, so it comes first.
 	/// </summary>
-	private readonly ConcurrentQueue<(string Line, bool AfterLogin)> _toSay = new();
+	private readonly ConcurrentQueue<Said> _toSay = new();
 
 	/// <summary>
 	/// Chat lines waiting for the player to log in, on the framework thread
 	/// </summary>
-	private readonly List<string> _afterLogin = [];
+	private readonly List<Said> _afterLogin = [];
 
 	public Tracker(
 		IDalamudPluginInterface pluginInterface,
@@ -156,6 +156,15 @@ internal sealed class Tracker : IDisposable
 	}
 
 	/// <summary>
+	/// A run was dropped because the plugin was off for part of it, on the framework thread: the chat line, which
+	/// doesn't open the runs window, since the run isn't there
+	/// </summary>
+	public void EndMissed(uint gameContentId)
+	{
+		Say(ChatLine.FormatEndMissed(Names.Duty(gameContentId)), afterLogin: false, opensRuns: false);
+	}
+
+	/// <summary>
 	/// Runs that were waiting were logged, on the thread that uploaded them: the chat line, once the player's logged in,
 	/// since the plugin starts at the title screen and uploads straight away
 	/// </summary>
@@ -168,14 +177,15 @@ internal sealed class Tracker : IDisposable
 	/// Prints a chat line, from any thread, after every line said before it
 	/// </summary>
 	/// <param name="afterLogin">Held until the player's logged in, if they aren't</param>
-	private void Say(string line, bool afterLogin)
+	/// <param name="opensRuns">Clicking it opens the runs window</param>
+	private void Say(string line, bool afterLogin, bool opensRuns = true)
 	{
 		if (_stopping.IsCancellationRequested)
 		{
 			return;
 		}
 
-		_toSay.Enqueue((line, afterLogin));
+		_toSay.Enqueue(new Said(line, afterLogin, opensRuns));
 		Background(() => _framework.RunOnFrameworkThread(PrintSaid), "print a chat line");
 	}
 
@@ -193,11 +203,11 @@ internal sealed class Tracker : IDisposable
 
 			if (said.AfterLogin && !_clientState.IsLoggedIn)
 			{
-				_afterLogin.Add(said.Line);
+				_afterLogin.Add(said);
 			}
 			else
 			{
-				_chat.Print(ChatMessage(said.Line));
+				_chat.Print(ChatMessage(said));
 			}
 		}
 	}
@@ -206,9 +216,9 @@ internal sealed class Tracker : IDisposable
 	{
 		if (Config.ChatLine && !_stopping.IsCancellationRequested)
 		{
-			foreach (var line in _afterLogin)
+			foreach (var said in _afterLogin)
 			{
-				_chat.Print(ChatMessage(line));
+				_chat.Print(ChatMessage(said));
 			}
 		}
 
@@ -216,13 +226,18 @@ internal sealed class Tracker : IDisposable
 	}
 
 	/// <summary>
-	/// The chat line (with its [MRT] tag) in gold, and clickable: clicking it opens the runs window
+	/// The chat line (with its [MRT] tag) in gold, and clickable if it opens the runs window
 	/// </summary>
-	private SeString ChatMessage(string line)
+	private SeString ChatMessage(Said said)
 	{
+		if (!said.OpensRuns)
+		{
+			return new SeStringBuilder().AddUiForeground(said.Line, ChatColour).Build();
+		}
+
 		return new SeStringBuilder()
 			.Add(_openRunsLink)
-			.AddUiForeground(line, ChatColour)
+			.AddUiForeground(said.Line, ChatColour)
 			.Add(RawPayload.LinkTerminator)
 			.Build();
 	}
@@ -285,4 +300,11 @@ internal sealed class Tracker : IDisposable
 			TaskContinuationOptions.OnlyOnFaulted,
 			TaskScheduler.Default);
 	}
+
+	/// <summary>
+	/// A chat line waiting to be printed
+	/// </summary>
+	/// <param name="AfterLogin">Held until the player's logged in, if they aren't</param>
+	/// <param name="OpensRuns">Clicking it opens the runs window</param>
+	private sealed record Said(string Line, bool AfterLogin, bool OpensRuns);
 }
