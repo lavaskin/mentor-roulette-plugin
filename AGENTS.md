@@ -67,7 +67,7 @@ In the README (Releasing). Releasing is merging: the Release workflow runs on ev
 
 ## Changelog
 
-`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR: what a player using the plugin would notice, one line each in plain words, ending with the ticket's number (`(#2)`). Tech debt with no visible change adds nothing.
+`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR: what a player using the plugin would notice, each one short sentence in plain words (what changed, not how it works: the ticket and the PR have the details), ending with the ticket's number (`(#2)`). Tech debt with no visible change adds nothing.
 
 ## Rules
 
