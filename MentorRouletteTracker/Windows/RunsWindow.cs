@@ -44,7 +44,7 @@ public sealed class RunsWindow : Window
 		var config = _tracker.Config;
 		if (!_tracker.IsConnected)
 		{
-			ImGui.TextUnformatted("Not connected.");
+			ImGui.TextUnformatted("Not connected");
 		}
 		else if (_tracker.Uploader.NeedsReconnect)
 		{
@@ -52,11 +52,14 @@ public sealed class RunsWindow : Window
 		}
 		else
 		{
-			ImGui.TextUnformatted($"Connected as {config.Username}.");
+			ImGui.TextUnformatted($"Connected as {config.Username}");
 		}
 
+		const string settings = "Settings";
 		ImGui.SameLine();
-		if (Ui.Link("Settings"))
+		var gap = ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(settings).X;
+		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + Math.Max(0, gap));
+		if (Ui.Link(settings))
 		{
 			_openSettings();
 		}

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Settings is on the right of the runs window (#21).
+- A shorter description in the plugin installer (#21).
+
 ### Fixed
 
 - A run you turned the plugin off during is no longer logged as not cleared, and a chat line says when one isn't logged (#16).
