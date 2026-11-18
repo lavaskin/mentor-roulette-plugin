@@ -51,7 +51,7 @@ jobs:
         if: ${{ !cancelled() && steps.restore.outcome == 'success' }}
         run: dotnet build --no-restore -c Release
 
-      # To try a pull request's build in the game before it's released (see the README)
+      # To try a pull request's build in the game before it's released (see docs/development.md)
       - name: Upload the plugin
         if: ${{ !cancelled() && steps.restore.outcome == 'success' }}
         uses: actions/upload-artifact@v7

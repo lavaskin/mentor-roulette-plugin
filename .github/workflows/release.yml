@@ -4,7 +4,7 @@ name: Release
 # released yet builds the plugin, makes a GitHub release with its zip and the version's changelog (which tags the
 # pushed commit vX.Y.Z), then points repo.json on main at it, which is what Dalamud installs from. A push whose
 # version is already released does nothing, unless repo.json doesn't point at it yet: then it finishes that release.
-# See "Releasing" in the README.
+# See docs/releasing.md.
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
         with:
           # The last step pushes repo.json to main, whose ruleset only deploy keys and admins can bypass:
           # GITHUB_TOKEN can't, and GitHub Actions can't be a bypass actor on a personal repository.
-          # See "Releasing" in the README.
+          # See docs/releasing.md.
           ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - name: What to do

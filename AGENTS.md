@@ -48,7 +48,7 @@ The same words as the site, for the same things:
 | Build | `dotnet build` (`-c Release` for what releases ship) |
 | Tests | `dotnet test` |
 
-The build needs Dalamud's assemblies. `Dalamud.NET.Sdk` finds the ones XIVLauncher installs (`%AppData%\XIVLauncher\addon\Hooks\dev` on Windows, `~/.xlcore/dalamud/Hooks/dev` with XIVLauncher.Core on Linux), or set `DALAMUD_HOME` to use others. Trying a build in the game is in the README (Building), and only the person testing it in the game can do that.
+The build needs Dalamud's assemblies. `Dalamud.NET.Sdk` finds the ones XIVLauncher installs (`%AppData%\XIVLauncher\addon\Hooks\dev` on Windows, `~/.xlcore/dalamud/Hooks/dev` with XIVLauncher.Core on Linux), or set `DALAMUD_HOME` to use others. Trying a build in the game is in `docs/development.md`, and only the person testing it in the game can do that.
 
 After any change, build in Release and run the tests. **Never run `git clean -x`** (or `-d` without `-n` first): it deletes untracked files, including new work that isn't committed yet. To get a clean build, delete `bin/` and `obj/` instead.
 
@@ -63,7 +63,7 @@ After any change, build in Release and run the tests. **Never run `git clean -x`
 
 ## Releasing
 
-In the README (Releasing). Releasing is merging: the Release workflow runs on every push to `main`, and releases `<Version>` (tagging it `vX.Y.Z` and updating `repo.json` on `main`) if it isn't released yet. Its three scripts are in `.github/scripts/`, so they can be run locally: `release-action.sh` decides what a push does, `changelog-section.sh` reads the release's notes, and `repo-json.sh` writes `repo.json`.
+In `docs/releasing.md`. Releasing is merging: the Release workflow runs on every push to `main`, and releases `<Version>` (tagging it `vX.Y.Z` and updating `repo.json` on `main`) if it isn't released yet. Its three scripts are in `.github/scripts/`, so they can be run locally: `release-action.sh` decides what a push does, `changelog-section.sh` reads the release's notes, and `repo-json.sh` writes `repo.json`.
 
 ## Changelog
 
@@ -80,6 +80,6 @@ A change no player would notice (tech debt, dev builds, CI, the release process,
 ## Rules
 
 - **The changelog is for players, never technical** (see Changelog): Dalamud's installer shows it to everyone who installs the plugin.
-- **Never change `<Version>`** in `MentorRouletteTracker.csproj`: it's bumped by hand when releasing (README, Releasing).
+- **Never change `<Version>`** in `MentorRouletteTracker.csproj`: it's bumped by hand when releasing (`docs/releasing.md`).
 - **Custom repository only.** The plugin is never submitted to Dalamud's official repository (DalamudPluginsD17), so its rules on review and AI use don't apply. Dalamud's plugin restrictions and its rules for talking to a backend server still do (<https://dalamud.dev/plugin-publishing/restrictions>, <https://dalamud.dev/plugin-development/technical-considerations>).
 - **Tickets and branches:** tickets are GitHub issues, tracked on the FFXIV project board, and branches are `feature/mrp-<n>-<short-desc>` off `dev`, where `<n>` is the issue's number.
