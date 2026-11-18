@@ -54,7 +54,7 @@ public sealed class SettingsWindow : Window
 		var config = _tracker.Config;
 		if (_tracker.IsConnected)
 		{
-			ImGui.TextUnformatted($"Connected as {config.Username}");
+			Ui.ConnectedAs(config.Username, config.ServerAddress);
 			ImGui.SameLine();
 			if (ImGui.SmallButton("Disconnect"))
 			{

@@ -52,7 +52,7 @@ public sealed class RunsWindow : Window
 		}
 		else
 		{
-			ImGui.TextUnformatted($"Connected as {config.Username}");
+			Ui.ConnectedAs(config.Username, config.ServerAddress);
 		}
 
 		const string settings = "Settings";

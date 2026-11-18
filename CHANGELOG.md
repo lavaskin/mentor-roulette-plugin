@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Your name in "Connected as" opens your Account page on the site (#21).
+
 ### Changed
 
 - Settings is on the right of the runs window (#21).
