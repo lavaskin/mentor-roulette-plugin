@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The site has a new address, mentorroulette.com: its links open there, and you stay connected (mentor-roulette-tracker#193).
+- The site has a new address, mentorroulette.com: its links open there, and you stay connected.
 
 ## [1.2.0] - 2026-11-17
 
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The chat line says when a run found a new duty or finished a milestone (#14).
 - Runs that were waiting to upload get a chat line once they're logged (#14).
-- An install guide, from installing the plugin to your first run logged (mentor-roulette-tracker#149).
+- An install guide, from installing the plugin to your first run logged.
 
 ### Fixed
 

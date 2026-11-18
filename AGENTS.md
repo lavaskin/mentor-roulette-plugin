@@ -69,7 +69,7 @@ In `docs/releasing.md`. Releasing is merging: the Release workflow runs on every
 
 **Players read this changelog.** A release's section is its notes on GitHub and its changelog in Dalamud's plugin installer, so every entry is written for someone who installed the plugin and has never seen its code.
 
-`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR, ending with the ticket's number (`(#2)`). Each entry:
+`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR, ending with the ticket's number (`(#2)`). Only this repo's tickets get one: work tracked in the site's or the API's repo (a ticket shared with the site, say) gets no number, since those repos are private and a player can't open the link. Each entry:
 
 - **Is what a player would see or notice in the game,** from the outside looking in: a new window, option, command or chat line, something that works differently, or something that was broken and isn't.
 - **Has no technical details at all:** no files, folders, settings files, classes, APIs, endpoints, status codes, builds, workflows or how it works. Say what the player sees ("Runs that failed to upload are tried again"), never why or how ("retries on a 503").
