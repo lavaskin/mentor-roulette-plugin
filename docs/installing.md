@@ -32,4 +32,4 @@ Only the Mentor Roulette is ever recorded: other roulettes, and duties you queue
 
 ## More
 
-Uploading runs you played before connecting, when a run counts, and what the plugin sends the site are in the [README](../README.md#using-it).
+Uploading runs you played before connecting, when a run counts, and what the plugin sends the site are in [How runs are recorded](runs.md).

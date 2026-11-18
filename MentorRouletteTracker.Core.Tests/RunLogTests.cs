@@ -63,6 +63,53 @@ public class RunLogTests
 	}
 
 	[Fact]
+	public void DeletingTheUploadedRuns_KeepsTheRest()
+	{
+		var waiting = Runs.Make(hour: 1);
+		var failed = Runs.Make(hour: 2, status: RunStatus.Failed);
+		var log = new RunLog([waiting, Runs.Make(hour: 3, status: RunStatus.Uploaded), failed, Runs.Make(hour: 4, status: RunStatus.Uploaded)]);
+		var changes = 0;
+		log.Changed += () => changes++;
+
+		Assert.Equal(2, log.DeleteUploaded());
+
+		Assert.Equal([failed, waiting], log.Runs);
+		Assert.Equal(1, changes);
+	}
+
+	[Fact]
+	public void DeletingTheUploadedRuns_WithNoneUploaded_DeletesNothing()
+	{
+		var log = new RunLog([Runs.Make(hour: 1), Runs.Make(hour: 2, status: RunStatus.Failed)]);
+
+		Assert.Equal(0, log.DeleteUploaded());
+
+		Assert.Equal(2, log.Runs.Count);
+	}
+
+	[Fact]
+	public void DeletingAllTheRuns_EmptiesIt()
+	{
+		var log = new RunLog([Runs.Make(hour: 1), Runs.Make(hour: 2, status: RunStatus.Failed), Runs.Make(hour: 3, status: RunStatus.Uploaded)]);
+		var changes = 0;
+		log.Changed += () => changes++;
+
+		Assert.Equal(3, log.DeleteAll());
+
+		Assert.Empty(log.Runs);
+		Assert.Equal(1, changes);
+	}
+
+	[Fact]
+	public void DeletingFromAnEmptyLog_DeletesNothing()
+	{
+		var log = new RunLog([]);
+
+		Assert.Equal(0, log.DeleteUploaded());
+		Assert.Equal(0, log.DeleteAll());
+	}
+
+	[Fact]
 	public void EveryChange_IsAnnounced()
 	{
 		var run = Runs.Make(hour: 1);

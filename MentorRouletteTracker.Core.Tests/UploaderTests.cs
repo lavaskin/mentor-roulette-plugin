@@ -241,6 +241,51 @@ public class UploaderTests
 	}
 
 	[Fact]
+	public async Task DeletingTheUploadedRuns_WaitsForAPass_AndDeletesTheRunsItUploaded()
+	{
+		var uploaded = Runs.Make(hour: 1, status: RunStatus.Uploaded);
+		var uploading = Runs.Make(hour: 2);
+		var log = new RunLog([uploaded, uploading]);
+		var uploader = UploaderFor(log);
+		var sending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		var answer = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		_api.Hold = (sending, answer);
+
+		var pass = uploader.UploadAsync();
+		await sending.Task;
+		var delete = uploader.DeleteUploadedAsync();
+		Assert.False(delete.IsCompleted);
+		answer.SetResult();
+		await pass;
+
+		Assert.Equal(2, await delete);
+		Assert.Empty(log.Runs);
+	}
+
+	[Fact]
+	public async Task DeletingAllTheRuns_WaitsForAPass()
+	{
+		var uploading = Runs.Make(hour: 1);
+		var failed = Runs.Make(hour: 2, status: RunStatus.Failed);
+		var log = new RunLog([uploading, failed]);
+		var uploader = UploaderFor(log);
+		var sending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		var answer = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		_api.Hold = (sending, answer);
+
+		var pass = uploader.UploadAsync();
+		await sending.Task;
+		var delete = uploader.DeleteAllAsync();
+		Assert.False(delete.IsCompleted);
+		answer.SetResult();
+		await pass;
+
+		Assert.Equal(2, await delete);
+		Assert.Empty(log.Runs);
+		Assert.Equal([uploading.Id], _api.Sent.Select(run => run.Id));
+	}
+
+	[Fact]
 	public async Task UploadedRuns_ArentSentAgain()
 	{
 		var log = new RunLog([Runs.Make(hour: 1, status: RunStatus.Uploaded)]);

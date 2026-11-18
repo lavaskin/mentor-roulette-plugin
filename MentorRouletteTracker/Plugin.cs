@@ -48,7 +48,7 @@ public sealed class Plugin : IDalamudPlugin
 			files,
 			new MentorApiClient(_http),
 			OpenRuns);
-		_watcher = new RunWatcher(ClientState, DutyState, PlayerState, Framework, Condition, Log, files.Runs, _tracker.RunEnded, _tracker.RunsSaved);
+		_watcher = new RunWatcher(ClientState, DutyState, PlayerState, Framework, Condition, Log, files.Runs, _tracker.RunEnded, _tracker.RunsSaved, _tracker.EndMissed);
 
 		_runsWindow = new RunsWindow(_tracker, () => _settingsWindow!.IsOpen = true);
 		_settingsWindow = new SettingsWindow(_tracker, () => _runsWindow.IsOpen = true);

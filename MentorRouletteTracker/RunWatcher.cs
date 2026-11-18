@@ -48,6 +48,10 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	/// <param name="runEnded">Each finished run, on the framework thread, which keeps it and asks for it to be saved</param>
 	/// <param name="runsSaved">Waits for the kept runs to be saved, and says whether they were</param>
+	/// <param name="endMissed">
+	/// The duty of a run dropped because the plugin was off for part of it and didn't see it cleared, on the framework
+	/// thread
+	/// </param>
 	public RunWatcher(
 		IClientState clientState,
 		IDutyState dutyState,
@@ -57,7 +61,8 @@ internal sealed unsafe class RunWatcher : IDisposable
 		IPluginLog log,
 		RunStore store,
 		Action<Run> runEnded,
-		Func<bool> runsSaved)
+		Func<bool> runsSaved,
+		Action<uint> endMissed)
 	{
 		_clientState = clientState;
 		_dutyState = dutyState;
@@ -83,9 +88,15 @@ internal sealed unsafe class RunWatcher : IDisposable
 			},
 			exception => _log.Error(exception, "Couldn't save the run in progress"));
 
+		_recorder.EndMissed += duty =>
+		{
+			_log.Information("Dropped the run in duty {Duty}: the plugin was off for part of it, and didn't see it cleared", duty);
+			endMissed(duty);
+		};
+
 		if (store.LoadInProgress() is { } saved)
 		{
-			_log.Information("Found a run in progress from before the plugin started, in duty {Duty}", saved.GameContentId);
+			_log.Information("Found a run in progress from before the plugin started, in duty {Duty}, turned off {TurnedOff}", saved.GameContentId, saved.PluginTurnedOff);
 			_recorder.Restore(saved);
 			_snapshot = saved;
 		}
@@ -109,8 +120,19 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_dutyState.DutyCompleted -= OnDutyCompleted;
 		_framework.Update -= OnUpdate;
 
-		// The time up to now counts, and the time until the plugin's back doesn't
-		Save();
+		// Dalamud unloads when the game closes (or when it's unloaded itself), which is treated like a crash: the time up
+		// to now counts, and the time until the plugin's back doesn't. Otherwise only the plugin's going (turned off,
+		// reloaded or updated), and it may miss how the run ends.
+		if (_framework.IsFrameworkUnloading)
+		{
+			Save();
+		}
+		else
+		{
+			Volatile.Write(ref _snapshot, _recorder.TurnedOff(DateTime.UtcNow));
+			_saver.Request();
+		}
+
 		_saver.Flush();
 	}
 

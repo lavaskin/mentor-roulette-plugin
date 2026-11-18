@@ -30,6 +30,16 @@ public static class ChatLine
 		return found is null ? line : $"{line} {found}";
 	}
 
+	/// <summary>
+	/// The line when a run is dropped because the plugin was off for part of it: "[MRT] The Vault wasn't logged, since
+	/// the plugin was off for part of it. You can log it on the site." Unlike the others, it says what the player can
+	/// do, since nothing else tells them the run's missing.
+	/// </summary>
+	public static string FormatEndMissed(string dutyName)
+	{
+		return $"{Tag} {Names.Capitalize(dutyName)} wasn't logged, since the plugin was off for part of it. You can log it on the site.";
+	}
+
 	private static string Report(Run run, string dutyName, RunOutcome outcome)
 	{
 		var what = $"{Names.Capitalize(dutyName)}, {Duration.Format(run.DurationSeconds)}";

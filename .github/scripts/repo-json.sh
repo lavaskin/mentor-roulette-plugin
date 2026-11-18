@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prints repo.json for one release: the manifest DalamudPackager wrote (icon and feedback included, from the
-# .csproj), plus where Dalamud downloads the plugin from. Dalamud reads repo.json from main (see the README),
+# .csproj), plus where Dalamud downloads the plugin from. Dalamud reads repo.json from main (see docs/releasing.md),
 # so this only goes there once the release's zip is up.
 #
 #   repo-json.sh <manifest> <tag> <changelog file> <repository>
