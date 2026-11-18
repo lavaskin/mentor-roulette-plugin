@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- A dev build keeps its own settings and runs, apart from the installed plugin's (#9).
+- Nothing you'd notice: this release is behind-the-scenes work (#9).
 
 ## [1.0.0] - 2026-11-05
 
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Connect your site account with a token, and each run is logged when it ends (#2).
 - `/mrt` lists every run recorded, and uploads any that aren't yet (#2).
 - A chat line when a run ends gives its number, duty and time, or why it wasn't logged (#2).
-- Runs the site couldn't take are retried, and runs not uploaded can be deleted (#2).
+- Runs that couldn't be uploaded are tried again, and ones that weren't can be deleted (#2).
 
 [Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.0.1...v1.1.0

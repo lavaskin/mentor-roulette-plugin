@@ -67,10 +67,19 @@ In the README (Releasing). Releasing is merging: the Release workflow runs on ev
 
 ## Changelog
 
-`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR: what a player using the plugin would notice, each one short sentence in plain words (what changed, not how it works: the ticket and the PR have the details), ending with the ticket's number (`(#2)`). Tech debt with no visible change adds nothing.
+**Players read this changelog.** A release's section is its notes on GitHub and its changelog in Dalamud's plugin installer, so every entry is written for someone who installed the plugin and has never seen its code.
+
+`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR, ending with the ticket's number (`(#2)`). Each entry:
+
+- **Is what a player would see or notice in the game,** from the outside looking in: a new window, option, command or chat line, something that works differently, or something that was broken and isn't.
+- **Has no technical details at all:** no files, folders, settings files, classes, APIs, endpoints, status codes, builds, workflows or how it works. Say what the player sees ("Runs that failed to upload are tried again"), never why or how ("retries on a 503").
+- **Is one short sentence in plain words.** The ticket and the PR have the details.
+
+A change no player would notice (tech debt, dev builds, CI, the release process, docs for contributors) adds nothing. If a release has nothing a player would notice, its section says so in one line rather than listing what changed underneath.
 
 ## Rules
 
+- **The changelog is for players, never technical** (see Changelog): Dalamud's installer shows it to everyone who installs the plugin.
 - **Never change `<Version>`** in `MentorRouletteTracker.csproj`: it's bumped by hand when releasing (README, Releasing).
 - **Custom repository only.** The plugin is never submitted to Dalamud's official repository (DalamudPluginsD17), so its rules on review and AI use don't apply. Dalamud's plugin restrictions and its rules for talking to a backend server still do (<https://dalamud.dev/plugin-publishing/restrictions>, <https://dalamud.dev/plugin-development/technical-considerations>).
 - **Tickets and branches:** tickets are GitHub issues, tracked on the FFXIV project board, and branches are `feature/mrp-<n>-<short-desc>` off `dev`, where `<n>` is the issue's number.
