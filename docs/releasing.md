@@ -14,6 +14,8 @@ That's all: there's no tag to push. Every push to `main` runs the Release workfl
 
 Pushing a tag by hand doesn't release anything.
 
+Players add the repository as `https://mentorroulette.com/plugin/repo.json`: the site's server proxies that address to `repo.json` on `main`, so a release shows there as soon as the workflow pushes it. Moving or renaming `repo.json` on `main` needs the site's server config changed with it, or that address breaks.
+
 If the workflow fails before making the release (a missing changelog section, a failing test), nothing is released: fix it on `dev` and merge again. If it made the release but failed to update `repo.json`, re-run the workflow (or push to `main` again), and it finishes the release.
 
 ## The deploy key

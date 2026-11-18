@@ -14,8 +14,10 @@ The plugin is in its own repository, not Dalamud's official one, so you add that
 2. Under **Custom Plugin Repositories**, paste this address into the empty box, click **+**, and then **Save and Close**:
 
    ```
-   https://raw.githubusercontent.com/lavaskin/mentor-roulette-plugin/main/repo.json
+   https://mentorroulette.com/plugin/repo.json
    ```
+
+   If you already added the older address, `https://raw.githubusercontent.com/lavaskin/mentor-roulette-plugin/main/repo.json`, it still works and there's nothing to change: adding this one as well would list the plugin twice.
 
 3. Type `/xlplugins`, search for **Mentor Roulette Tracker**, and install it.
 
