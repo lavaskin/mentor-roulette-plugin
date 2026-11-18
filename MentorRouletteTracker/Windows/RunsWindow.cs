@@ -100,7 +100,7 @@ public sealed class RunsWindow : Window
 		var runs = _tracker.Log.Runs;
 		if (runs.Count == 0)
 		{
-			ImGui.TextWrapped("No runs recorded yet. Play a Mentor Roulette and it'll show here.");
+			ImGui.TextUnformatted("No runs recorded");
 			return;
 		}
 
