@@ -79,7 +79,7 @@ public sealed class JsonFileTests : IDisposable
 	private sealed class Settings
 	{
 		public int Version { get; set; } = 1;
-		public string ServerAddress { get; set; } = "https://mentor.lavask.in";
+		public string ServerAddress { get; set; } = "https://mentorroulette.com";
 		public string? Token { get; set; }
 		public string? Username { get; set; }
 		public bool AutoUpload { get; set; } = true;

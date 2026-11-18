@@ -1,6 +1,6 @@
 # Installing the plugin
 
-How to install the plugin and connect it to your account on [Mentor Roulette Tracker](https://mentor.lavask.in), up to your first Mentor Roulette run logged.
+How to install the plugin and connect it to your account on [Mentor Roulette Tracker](https://mentorroulette.com), up to your first Mentor Roulette run logged.
 
 ## Before you start
 
@@ -21,7 +21,7 @@ The plugin is in its own repository, not Dalamud's official one, so you add that
 
 ## 2. Connect
 
-1. On the site, sign in and go to your [Account page's Plugin section](https://mentor.lavask.in/account?section=plugin). Click **Create token**, give it a name (like the PC you play on), click **Create**, and copy the token it shows you. You only see it once.
+1. On the site, sign in and go to your [Account page's Plugin section](https://mentorroulette.com/account?section=plugin). Click **Create token**, give it a name (like the PC you play on), click **Create**, and copy the token it shows you. You only see it once.
 2. In the game, type `/mrt config`, paste the token into the box and click **Connect**. It says which account it's connected to. One connection covers every character you play on that PC.
 
 ## 3. Play
