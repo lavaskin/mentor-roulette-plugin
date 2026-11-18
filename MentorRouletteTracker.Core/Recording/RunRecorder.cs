@@ -18,6 +18,11 @@ namespace MentorRouletteTracker.Core.Recording;
 /// A run the player never loaded into (they disconnected or crashed on the loading screen, and didn't come back)
 /// gives out nothing: it has no job, which the site needs, and no time.
 /// </para>
+/// <para>
+/// A run the plugin was turned off for part of (<see cref="TurnedOff"/>) may have been cleared while it was off, so
+/// it's given out only if the recorder sees the clear. Ending any other way drops it, and raises
+/// <see cref="EndMissed"/>.
+/// </para>
 /// Not thread safe: the plugin calls it from the game's framework thread only.
 /// </summary>
 public sealed class RunRecorder
@@ -30,6 +35,12 @@ public sealed class RunRecorder
 
 	private Pop? _pop;
 	private Current? _current;
+
+	/// <summary>
+	/// A run the plugin was turned off for part of ended without the recorder seeing the clear, and was dropped. Gives
+	/// its duty (<c>ContentFinderCondition</c>).
+	/// </summary>
+	public event Action<uint>? EndMissed;
 
 	/// <summary>
 	/// A run is in progress, with the player in its duty (its clock may not have started yet)
@@ -81,6 +92,12 @@ public sealed class RunRecorder
 		{
 			if (contentFinderConditionId != 0 && contentFinderConditionId == current.GameContentId)
 			{
+				if (current is { Away: true, ClockRanWhileOff: true })
+				{
+					current.RunningSince = current.LastSeenAt;
+					current.ClockRanWhileOff = false;
+				}
+
 				current.Away = false;
 				return null;
 			}
@@ -198,14 +215,33 @@ public sealed class RunRecorder
 			ElapsedSeconds = elapsed.TotalSeconds,
 			LastSeenAt = current.Away ? current.LastSeenAt : at,
 			AwaitingDutyCommenced = current is { StartsOn: ClockStart.Commenced, RunningSince: null },
+			PluginTurnedOff = current.PluginWasOff,
+			ClockRanWhileOff = current.ClockRanWhileOff,
 		};
+	}
+
+	/// <summary>
+	/// The plugin is being turned off, reloaded or updated, rather than the game closing: the run in progress to save,
+	/// marked so it's logged only if the clear is seen after the plugin's back. Null if there isn't one.
+	/// </summary>
+	public InProgressRun? TurnedOff(DateTime at)
+	{
+		if (_current is not { } current)
+		{
+			return null;
+		}
+
+		current.PluginWasOff = true;
+		current.ClockRanWhileOff |= current is { Away: false, RunningSince: not null };
+		return Snapshot(at);
 	}
 
 	/// <summary>
 	/// Carries on with a saved run after the plugin starts. It's treated as logged out since it was last seen, so
 	/// the time in between doesn't count: arriving back in its duty carries on once they've loaded in, and arriving
 	/// anywhere else ends it. A run saved before "Duty commenced" still waits for it (the plugin was reloaded
-	/// while the party loaded in), so the wait doesn't count.
+	/// while the party loaded in), so the wait doesn't count. The exception is a run the plugin was turned off for
+	/// with its clock running: back in its duty, the time it was off counts.
 	/// </summary>
 	public void Restore(InProgressRun run)
 	{
@@ -220,6 +256,8 @@ public sealed class RunRecorder
 			Away = true,
 			StartsOn = run.AwaitingDutyCommenced ? ClockStart.Commenced : ClockStart.LoadedIn,
 			LastSeenAt = run.LastSeenAt,
+			PluginWasOff = run.PluginTurnedOff,
+			ClockRanWhileOff = run.ClockRanWhileOff,
 		};
 	}
 
@@ -227,6 +265,12 @@ public sealed class RunRecorder
 	{
 		var current = _current!;
 		_current = null;
+
+		if (current.PluginWasOff && !cleared)
+		{
+			EndMissed?.Invoke(current.GameContentId);
+			return null;
+		}
 
 		if (current.GameClassJobId == 0)
 		{
@@ -302,5 +346,16 @@ public sealed class RunRecorder
 		public bool Away { get; set; }
 
 		public required DateTime LastSeenAt { get; set; }
+
+		/// <summary>
+		/// The plugin was turned off for part of the run, so it may have missed the clear
+		/// </summary>
+		public bool PluginWasOff { get; set; }
+
+		/// <summary>
+		/// Turned off with the clock running, and not back in the duty yet: back in it, the clock carries on from
+		/// <see cref="LastSeenAt"/>
+		/// </summary>
+		public bool ClockRanWhileOff { get; set; }
 	}
 }

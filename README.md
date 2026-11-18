@@ -36,6 +36,7 @@ Without connecting, it still records every run and keeps it, so you can connect 
 - Leaving or being kicked before the clear is a run that wasn't cleared.
 - Disconnecting and coming back to the same duty is one run, and the time you were away doesn't count.
 - If the game crashes and you don't get back in, the run is recorded as not cleared the next time you log in.
+- If you turn the plugin off during a run (or it's reloaded or updated), it can't know how the run ended, so the run is logged only if the plugin's back on in time to see you clear it. Otherwise it isn't logged, and a chat line says so: you can log it on the site. If it's back on before you leave, the time it was off still counts, but any wipes then are missed.
 
 Your time is your own time in the duty, to the duty-complete message, or to leaving if it wasn't cleared. It starts at "Duty commenced", so a cleared run's time matches the game's completion time. As a replacement, it starts once you've loaded in. Loading screens, and time disconnected, don't count.
 
