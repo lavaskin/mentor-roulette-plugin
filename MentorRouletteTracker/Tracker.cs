@@ -76,15 +76,22 @@ internal sealed class Tracker : IDisposable
 
 		// Only a dev build can point at another site. Dev builds keep their own settings, but one from 1.0.0 shared
 		// the installed plugin's, so the installed one goes back to the real site, dropping the token, which was for
-		// the other one.
+		// the other one. The site's former addresses are the same site, so those stay connected.
 		IsDev = pluginInterface.IsDev;
-		if (!IsDev && Config.ServerAddress != ServerAddress.Default)
+		switch (ServerAddress.OnLoad(Config.ServerAddress, IsDev))
 		{
-			_log.Information("Went back to {Server} from {Other}, which only dev builds can use", ServerAddress.Default, Config.ServerAddress);
-			Config.ServerAddress = ServerAddress.Default;
-			Config.Token = null;
-			Config.Username = null;
-			SaveConfig();
+			case SavedAddressChange.Move:
+				_log.Information("Moved to {Server} from the site's former address {Other}", ServerAddress.Default, Config.ServerAddress);
+				Config.ServerAddress = ServerAddress.Default;
+				SaveConfig();
+				break;
+			case SavedAddressChange.Reset:
+				_log.Information("Went back to {Server} from {Other}, which only dev builds can use", ServerAddress.Default, Config.ServerAddress);
+				Config.ServerAddress = ServerAddress.Default;
+				Config.Token = null;
+				Config.Username = null;
+				SaveConfig();
+				break;
 		}
 
 		Log = new RunLog(files.Runs.LoadRuns());

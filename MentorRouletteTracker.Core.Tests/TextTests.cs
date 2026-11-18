@@ -25,13 +25,13 @@ public class TextTests
 	}
 
 	[Theory]
-	[InlineData("https://mentor.lavask.in", "https://mentor.lavask.in")]
-	[InlineData("  https://mentor.lavask.in/  ", "https://mentor.lavask.in")]
+	[InlineData("https://mentorroulette.com", "https://mentorroulette.com")]
+	[InlineData("  https://mentorroulette.com/  ", "https://mentorroulette.com")]
 	[InlineData("http://localhost:4200", "http://localhost:4200")]
 	[InlineData("http://localhost:4200/mrt/", "http://localhost:4200/mrt")]
-	[InlineData("mentor.lavask.in", null)]
-	[InlineData("ftp://mentor.lavask.in", null)]
-	[InlineData("https://mentor.lavask.in/?a=1", null)]
+	[InlineData("mentorroulette.com", null)]
+	[InlineData("ftp://mentorroulette.com", null)]
+	[InlineData("https://mentorroulette.com/?a=1", null)]
 	[InlineData("", null)]
 	public void ServerAddresses_AreWebAddresses(string text, string? expected)
 	{
@@ -41,6 +41,21 @@ public class TextTests
 	[Fact]
 	public void Links_GoUnderTheServerAddress()
 	{
-		Assert.Equal("https://mentor.lavask.in/roulettes?run=12", ServerAddress.Link("https://mentor.lavask.in/", "/roulettes?run=12"));
+		Assert.Equal("https://mentorroulette.com/roulettes?run=12", ServerAddress.Link("https://mentorroulette.com/", "/roulettes?run=12"));
+	}
+
+	[Theory]
+	[InlineData("https://mentorroulette.com", false, SavedAddressChange.None)]
+	[InlineData("https://mentorroulette.com", true, SavedAddressChange.None)]
+	[InlineData("https://mentor.lavask.in", false, SavedAddressChange.Move)]
+	[InlineData("https://mentor.lavask.in/", false, SavedAddressChange.Move)]
+	[InlineData("https://Mentor.Lavask.in", false, SavedAddressChange.Move)]
+	[InlineData("https://mentor.lavask.in", true, SavedAddressChange.Move)]
+	[InlineData("http://localhost:4200", true, SavedAddressChange.None)]
+	[InlineData("http://localhost:4200", false, SavedAddressChange.Reset)]
+	[InlineData("not an address", false, SavedAddressChange.Reset)]
+	public void SavedAddresses_MoveFromTheSitesFormerAddress_AndOnlyDevBuildsKeepAnother(string saved, bool isDev, SavedAddressChange expected)
+	{
+		Assert.Equal(expected, ServerAddress.OnLoad(saved, isDev));
 	}
 }
