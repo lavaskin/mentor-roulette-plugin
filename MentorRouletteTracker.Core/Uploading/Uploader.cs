@@ -148,12 +148,35 @@ public sealed class Uploader
 	/// logged on the site and gone here
 	/// </summary>
 	/// <returns>Whether it was deleted: not if it was uploaded meanwhile</returns>
-	public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+	public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+	{
+		return WhenNoPassAsync(() => _log.Delete(id), cancellationToken);
+	}
+
+	/// <summary>
+	/// Deletes every uploaded run once no pass is running, so a run uploaded by the pass is deleted with them
+	/// </summary>
+	/// <returns>How many were deleted</returns>
+	public Task<int> DeleteUploadedAsync(CancellationToken cancellationToken = default)
+	{
+		return WhenNoPassAsync(_log.DeleteUploaded, cancellationToken);
+	}
+
+	/// <summary>
+	/// Deletes every run once no pass is running, so none is deleted halfway through uploading
+	/// </summary>
+	/// <returns>How many were deleted</returns>
+	public Task<int> DeleteAllAsync(CancellationToken cancellationToken = default)
+	{
+		return WhenNoPassAsync(_log.DeleteAll, cancellationToken);
+	}
+
+	private async Task<T> WhenNoPassAsync<T>(Func<T> change, CancellationToken cancellationToken)
 	{
 		await _gate.WaitAsync(cancellationToken);
 		try
 		{
-			return _log.Delete(id);
+			return change();
 		}
 		finally
 		{

@@ -4,7 +4,7 @@ namespace MentorRouletteTracker.Core.Storage;
 
 /// <summary>
 /// The plugin's runs on disk, as JSON files (<see cref="JsonFile"/>) in its data directory: <c>runs.json</c> (every
-/// run, kept forever) and <c>run-in-progress.json</c> (the run being played, while there is one).
+/// run the plugin keeps) and <c>run-in-progress.json</c> (the run being played, while there is one).
 /// </summary>
 public sealed class RunStore
 {

@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Settings can delete your uploaded runs, or all your runs, from the plugin, without touching the site (#19).
+
 ### Changed
 
 - Minor tweaks (#21).
+
+### Removed
+
+- The note in settings about logging runs on the site as well (#19).
 
 ### Fixed
 

@@ -33,6 +33,19 @@ public sealed class RunStoreTests : IDisposable
 	}
 
 	[Fact]
+	public void TheRuns_ReadBackAsTheyAre_AfterADelete()
+	{
+		var waiting = Runs.Make(hour: 1);
+		var log = new RunLog([waiting, Runs.Make(hour: 2, status: RunStatus.Uploaded) with { SiteRunId = 5123, RunNumber = 123 }]);
+		_store.SaveRuns(log.Runs);
+
+		log.DeleteUploaded();
+		_store.SaveRuns(log.Runs);
+
+		Assert.Equal([waiting], new RunStore(_directory, _warnings.Add).LoadRuns());
+	}
+
+	[Fact]
 	public void TheRunInProgress_ReadsBackAsWritten()
 	{
 		var run = new InProgressRun
