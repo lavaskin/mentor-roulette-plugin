@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-17
+
 ### Added
 
 - Settings can delete your uploaded runs, or all your runs, from the plugin, without touching the site (#19).
@@ -49,7 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A chat line when a run ends gives its number, duty and time, or why it wasn't logged (#2).
 - Runs that couldn't be uploaded are tried again, and ones that weren't can be deleted (#2).
 
-[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/lavaskin/mentor-roulette-plugin/releases/tag/v1.0.0
