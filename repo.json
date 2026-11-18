@@ -3,8 +3,8 @@
     "Author": "lavaskin",
     "Name": "Mentor Roulette Tracker",
     "InternalName": "MentorRouletteTracker",
-    "AssemblyVersion": "1.2.0.0",
-    "Description": "Keeps track of your Mentor Roulette runs and logs them to your account on Mentor Roulette Tracker (mentor.lavask.in).",
+    "AssemblyVersion": "1.2.1.0",
+    "Description": "Keeps track of your Mentor Roulette runs and logs them to your account on Mentor Roulette Tracker (mentorroulette.com).",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/lavaskin/mentor-roulette-plugin",
     "Tags": [
@@ -22,11 +22,11 @@
     "IconUrl": "https://raw.githubusercontent.com/lavaskin/mentor-roulette-plugin/main/images/icon.png",
     "Punchline": "Logs your Mentor Roulette runs to Mentor Roulette Tracker.",
     "AcceptsFeedback": false,
-    "DownloadLinkInstall": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.2.0/MentorRouletteTracker.zip",
-    "DownloadLinkUpdate": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.2.0/MentorRouletteTracker.zip",
-    "DownloadLinkTesting": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.2.0/MentorRouletteTracker.zip",
-    "Changelog": "### Added\n\n- Settings can delete your uploaded runs, or all your runs, from the plugin, without touching the site (#19).\n\n### Changed\n\n- Minor tweaks (#19, #21).\n\n### Fixed\n\n- A run you turned the plugin off during is no longer logged as not cleared, and a chat line says when one isn't logged (#16).",
-    "LastUpdate": "1794979885",
+    "DownloadLinkInstall": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.2.1/MentorRouletteTracker.zip",
+    "DownloadLinkUpdate": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.2.1/MentorRouletteTracker.zip",
+    "DownloadLinkTesting": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.2.1/MentorRouletteTracker.zip",
+    "Changelog": "### Changed\n\n- The site has a new address, mentorroulette.com: its links open there, and you stay connected (mentor-roulette-tracker#193).",
+    "LastUpdate": "1794984222",
     "IsHide": false,
     "IsTestingExclusive": false
   }
