@@ -44,7 +44,7 @@ public class RunRecorderTests
 		Assert.False(run.Replacement);
 		Assert.Equal(2, run.Wipes);
 		Assert.Equal(1930, run.DurationSeconds);
-		Assert.Equal(At(1960), run.DatePlayed);
+		Assert.Equal(At(20), run.DatePlayed);
 		Assert.Equal(DateTimeKind.Utc, run.DatePlayed.Kind);
 		Assert.Equal(RunStatus.NotUploaded, run.Status);
 		Assert.False(_recorder.InDuty);
@@ -182,6 +182,7 @@ public class RunRecorderTests
 		Assert.Equal(Vault, finished!.GameContentId);
 		Assert.False(finished.Replacement);
 		Assert.Equal(100, finished.DurationSeconds);
+		Assert.Equal(At(20), finished.DatePlayed);
 	}
 
 	[Fact]
@@ -249,7 +250,7 @@ public class RunRecorderTests
 		Assert.False(run.Cleared);
 		Assert.Equal(1, run.Wipes);
 		Assert.Equal(242, run.DurationSeconds);
-		Assert.Equal(At(272), run.DatePlayed);
+		Assert.Equal(At(20), run.DatePlayed);
 	}
 
 	[Fact]
@@ -264,7 +265,7 @@ public class RunRecorderTests
 
 		Assert.False(run!.Cleared);
 		Assert.Equal(1, run.DurationSeconds);
-		Assert.Equal(At(200), run.DatePlayed);
+		Assert.Equal(At(20), run.DatePlayed);
 	}
 
 	[Fact]
@@ -291,6 +292,7 @@ public class RunRecorderTests
 
 		Assert.True(run!.Replacement);
 		Assert.Equal(600, run.DurationSeconds);
+		Assert.Equal(At(90), run.DatePlayed);
 	}
 
 	[Fact]
@@ -337,6 +339,7 @@ public class RunRecorderTests
 		Assert.Equal(300 + 300, run!.DurationSeconds);
 		Assert.Equal(2, run.Wipes);
 		Assert.True(run.Cleared);
+		Assert.Equal(At(20), run.DatePlayed);
 	}
 
 	[Fact]
@@ -391,7 +394,7 @@ public class RunRecorderTests
 
 		Assert.False(run!.Cleared);
 		Assert.Equal(300, run.DurationSeconds);
-		Assert.Equal(At(330), run.DatePlayed);
+		Assert.Equal(At(20), run.DatePlayed);
 	}
 
 	[Fact]
@@ -427,6 +430,39 @@ public class RunRecorderTests
 		Assert.Equal(2, run.Wipes);
 		Assert.True(run.Cleared);
 		Assert.Equal(Paladin, run.GameClassJobId);
+		Assert.Equal(At(20), run.DatePlayed);
+	}
+
+	[Fact]
+	public void ARunSavedWithoutItsEntryTime_IsDatedAtItsEndMinusItsTime()
+	{
+		// Saved by a version that didn't keep when the player entered
+		Enter();
+		var saved = _recorder.Snapshot(At(30 + 600))! with { EnteredAt = null };
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(30 + 900));
+		restarted.LoadedIn(At(30 + 900));
+		var run = restarted.Completed(At(30 + 1200));
+
+		Assert.Equal(600 + 300, run!.DurationSeconds);
+		Assert.Equal(At(30 + 1200 - 900), run.DatePlayed);
+		Assert.Equal(DateTimeKind.Utc, run.DatePlayed.Kind);
+	}
+
+	[Fact]
+	public void ARunSavedWithoutItsEntryTime_ThatEndedWhileAway_IsDatedWhenLastSeenMinusItsTime()
+	{
+		Enter();
+		var saved = _recorder.Snapshot(At(30 + 600))! with { EnteredAt = null };
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		var run = restarted.Arrived(0, throughDutyFinder: false, At(5000));
+
+		Assert.Equal(600, run!.DurationSeconds);
+		Assert.Equal(At(30), run.DatePlayed);
 	}
 
 	[Fact]
@@ -498,7 +534,7 @@ public class RunRecorderTests
 		Assert.False(run.Cleared);
 		Assert.Equal(1, run.Wipes);
 		Assert.Equal(600, run.DurationSeconds);
-		Assert.Equal(At(630), run.DatePlayed);
+		Assert.Equal(At(20), run.DatePlayed);
 		Assert.False(restarted.IsAway);
 	}
 
@@ -547,6 +583,7 @@ public class RunRecorderTests
 		Assert.True(run!.Cleared);
 		Assert.Equal(100 + 600 + 100, run.DurationSeconds);
 		Assert.Equal(2, run.Wipes);
+		Assert.Equal(At(20), run.DatePlayed);
 		Assert.Empty(dropped);
 	}
 
@@ -644,6 +681,7 @@ public class RunRecorderTests
 		var snapshot = _recorder.Snapshot(At(90));
 
 		Assert.Equal(60, snapshot!.ElapsedSeconds);
+		Assert.Equal(At(20), snapshot.EnteredAt);
 		Assert.Equal(At(90), snapshot.LastSeenAt);
 		Assert.Equal(1, snapshot.Wipes);
 		Assert.Equal(Vault, snapshot.GameContentId);

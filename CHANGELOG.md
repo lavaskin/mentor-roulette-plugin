@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Runs are dated when you enter the duty rather than when it ends, so a run that goes past midnight counts toward the day you started it (#30).
+
 ## [1.2.1] - 2026-11-18
 
 ### Changed
