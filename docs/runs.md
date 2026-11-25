@@ -22,4 +22,4 @@ Your time is your own time in the duty, to the duty-complete message, or to leav
 
 ## What it keeps and sends
 
-The runs are kept in the plugin's config folder (`pluginConfigs/MentorRouletteTracker/runs.json`), and the token in its settings. It sends the site only the duty, your job, whether it was cleared, whether you were a replacement, the wipes, your time and when the run ended. Never your character's name, or anything about anyone else in the duty.
+The runs are kept in the plugin's config folder (`pluginConfigs/MentorRouletteTracker/runs.json`), and the token in its settings. It sends the site only the duty, your job, whether it was cleared, whether you were a replacement, the wipes, your time and when you entered the duty. Never your character's name, or anything about anyone else in the duty.

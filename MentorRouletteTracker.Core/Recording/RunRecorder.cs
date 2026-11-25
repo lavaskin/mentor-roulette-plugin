@@ -10,6 +10,11 @@ namespace MentorRouletteTracker.Core.Recording;
 /// (cleared) or when they arrive anywhere else (not cleared).
 /// </para>
 /// <para>
+/// Its date played is when the player entered the duty: the arrival that started it, at the start of the loading
+/// screen in. Not when it ended, so a run that goes past midnight counts for the day it started. A disconnect and
+/// return keeps the first entry.
+/// </para>
+/// <para>
 /// Its time is the player's own, and matches the game's completion time for a normal run: the clock starts at "Duty
 /// commenced". A replacement joins after that, so their clock starts once they've loaded in. The clock stops while
 /// they're logged out, and starts again once they've loaded back into the duty. Loading screens never count.
@@ -113,6 +118,7 @@ public sealed class RunRecorder
 				GameContentId = contentFinderConditionId,
 				Replacement = pop.InProgress,
 				StartsOn = pop.InProgress ? ClockStart.LoadedIn : ClockStart.Commenced,
+				EnteredAt = at,
 				LastSeenAt = at,
 			};
 		}
@@ -213,6 +219,7 @@ public sealed class RunRecorder
 			Replacement = current.Replacement,
 			Wipes = current.Wipes,
 			ElapsedSeconds = elapsed.TotalSeconds,
+			EnteredAt = current.EnteredAt,
 			LastSeenAt = current.Away ? current.LastSeenAt : at,
 			AwaitingDutyCommenced = current is { StartsOn: ClockStart.Commenced, RunningSince: null },
 			PluginTurnedOff = current.PluginWasOff,
@@ -255,6 +262,7 @@ public sealed class RunRecorder
 			Elapsed = TimeSpan.FromSeconds(run.ElapsedSeconds),
 			Away = true,
 			StartsOn = run.AwaitingDutyCommenced ? ClockStart.Commenced : ClockStart.LoadedIn,
+			EnteredAt = run.EnteredAt,
 			LastSeenAt = run.LastSeenAt,
 			PluginWasOff = run.PluginTurnedOff,
 			ClockRanWhileOff = run.ClockRanWhileOff,
@@ -279,6 +287,7 @@ public sealed class RunRecorder
 
 		var endedAt = current.Away ? current.LastSeenAt : at;
 		StopClock(current, endedAt);
+		var enteredAt = current.EnteredAt ?? endedAt - current.Elapsed;
 
 		return new Run
 		{
@@ -289,7 +298,7 @@ public sealed class RunRecorder
 			Replacement = current.Replacement,
 			Wipes = current.Wipes,
 			DurationSeconds = Math.Max(1, (int)current.Elapsed.TotalSeconds),
-			DatePlayed = DateTime.SpecifyKind(endedAt, DateTimeKind.Utc),
+			DatePlayed = DateTime.SpecifyKind(enteredAt, DateTimeKind.Utc),
 		};
 	}
 
@@ -339,6 +348,12 @@ public sealed class RunRecorder
 		public DateTime? RunningSince { get; set; }
 
 		public required ClockStart StartsOn { get; set; }
+
+		/// <summary>
+		/// When the player entered the duty: the run's date played. Null for a run restored from a version that didn't
+		/// save it, which is dated at its end minus its time.
+		/// </summary>
+		public required DateTime? EnteredAt { get; init; }
 
 		/// <summary>
 		/// Logged out, or restored and not yet back: the next arrival decides

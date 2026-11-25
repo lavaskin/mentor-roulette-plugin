@@ -56,12 +56,36 @@ public sealed class RunStoreTests : IDisposable
 			Replacement = true,
 			Wipes = 2,
 			ElapsedSeconds = 612.25,
+			EnteredAt = Runs.Day.AddHours(2).AddMinutes(50),
 			LastSeenAt = Runs.Day.AddHours(3),
 		};
 
 		_store.SaveInProgress(run);
 
 		Assert.Equal(run, _store.LoadInProgress());
+	}
+
+	[Fact]
+	public void ARunInProgress_SavedWithoutItsEntryTime_ReadsWithNone()
+	{
+		File.WriteAllText(Path.Combine(_directory, RunStore.InProgressFileName), """
+			{
+			  "id": "6f1f8d0e-3c1a-4a51-9a51-6f0a2b1c9d11",
+			  "gameContentId": 421,
+			  "gameClassJobId": 19,
+			  "replacement": false,
+			  "wipes": 1,
+			  "elapsedSeconds": 600,
+			  "lastSeenAt": "2026-11-05T03:10:00Z",
+			  "awaitingDutyCommenced": false
+			}
+			""");
+
+		var run = _store.LoadInProgress();
+
+		Assert.Null(run!.EnteredAt);
+		Assert.Equal(600, run.ElapsedSeconds);
+		Assert.Empty(_warnings);
 	}
 
 	[Fact]
