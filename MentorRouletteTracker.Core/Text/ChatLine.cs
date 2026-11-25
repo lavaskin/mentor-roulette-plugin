@@ -6,15 +6,16 @@ namespace MentorRouletteTracker.Core.Text;
 /// <summary>
 /// The line in chat when a run ends: "[MRT] Logged #1234, The Vault, 32m 10s." The player just played it, so only the
 /// duty and time say which run it was, and the rest is what happened to it. It reports, rather than telling the player
-/// what to do.
+/// what to do. A logged run then says how its time compares with the usual, and anything it found.
 /// </summary>
 public static class ChatLine
 {
 	private const string Tag = "[MRT]";
 
-	public static string Format(Run run, string dutyName, RunOutcome outcome)
+	/// <param name="sayPace">Say how its time compares with the usual, when the site said</param>
+	public static string Format(Run run, string dutyName, RunOutcome outcome, bool sayPace = true)
 	{
-		return $"{Tag} {Report(run, dutyName, outcome)}";
+		return $"{Tag} {Report(run, dutyName, outcome, sayPace)}";
 	}
 
 	/// <summary>
@@ -40,20 +41,35 @@ public static class ChatLine
 		return $"{Tag} {Names.Capitalize(dutyName)} wasn't logged, since the plugin was off for part of it. You can log it on the site.";
 	}
 
-	private static string Report(Run run, string dutyName, RunOutcome outcome)
+	private static string Report(Run run, string dutyName, RunOutcome outcome, bool sayPace)
 	{
 		var what = $"{Names.Capitalize(dutyName)}, {Duration.Format(run.DurationSeconds)}";
 
 		return outcome.Kind switch
 		{
-			RunOutcomeKind.Logged when outcome.NewDuty is { } newDuty => $"Logged #{outcome.RunNumber}, {what}. {Milestones.Found(newDuty)}",
-			RunOutcomeKind.Logged => $"Logged #{outcome.RunNumber}, {what}.",
+			RunOutcomeKind.Logged => Logged(outcome, what, sayPace),
 			RunOutcomeKind.NotConnected => $"Saved {what}: not connected.",
 			RunOutcomeKind.AutoUploadOff => $"Saved {what}: auto-upload is off.",
 			RunOutcomeKind.Refused => $"Failed to upload {what}: {Sentence(outcome.Reason ?? "no reason given")}",
 			RunOutcomeKind.NeedsReconnect => $"Failed to upload {what}: not connected.",
 			_ => $"Failed to upload {what}.",
 		};
+	}
+
+	private static string Logged(RunOutcome outcome, string what, bool sayPace)
+	{
+		var parts = new List<string> { $"Logged #{outcome.RunNumber}, {what}." };
+		if (sayPace && outcome.Pace is { } pace)
+		{
+			parts.Add(Pace.Format(pace));
+		}
+
+		if (outcome.NewDuty is { } newDuty)
+		{
+			parts.Add(Milestones.Found(newDuty));
+		}
+
+		return string.Join(' ', parts);
 	}
 
 	private static string Sentence(string text)

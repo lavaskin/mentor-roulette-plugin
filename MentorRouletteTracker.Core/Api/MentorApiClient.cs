@@ -65,7 +65,10 @@ public sealed class MentorApiClient : IMentorApi
 		var newDuty = response.NewDuty is { } found
 			? new NewDuty(found.DutiesSeen, found.DutiesInRoulette, found.OfType, found.OfTypeInExpansion, response.DutyTypeLabel, response.ExpansionLabel)
 			: null;
-		return new LoggedRun(response.MentorRouletteLogId, response.RunNumber, newDuty);
+		var pace = response.Pace is { } compared && Enum.IsDefined(compared.Verdict)
+			? new RunPace(compared.Verdict, compared.GapSeconds)
+			: null;
+		return new LoggedRun(response.MentorRouletteLogId, response.RunNumber, newDuty, pace);
 	}
 
 	private async Task<ApiResult<T>> SendAsync<T>(
@@ -185,12 +188,17 @@ public sealed class MentorApiClient : IMentorApi
 		DateTime DatePlayed);
 
 	/// <param name="NewDuty">Optional, like the labels: older versions of the site don't send them</param>
+	/// <param name="Pace">Optional too, for the same reason</param>
 	private sealed record RunResponse(
 		long MentorRouletteLogId,
 		int RunNumber,
 		string? DutyTypeLabel = null,
 		string? ExpansionLabel = null,
-		NewDutyResponse? NewDuty = null);
+		NewDutyResponse? NewDuty = null,
+		PaceResponse? Pace = null);
+
+	/// <param name="Verdict">Any number binds, so one a newer site adds is left out by <see cref="ToLoggedRun"/></param>
+	private sealed record PaceResponse(PaceVerdict Verdict, int GapSeconds);
 
 	private sealed record NewDutyResponse(int DutiesSeen, int DutiesInRoulette, SeenTotals? OfType, SeenTotals? OfTypeInExpansion);
 }

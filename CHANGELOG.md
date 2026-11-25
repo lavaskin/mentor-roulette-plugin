@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The chat line after a run says how its time compares with other players' recent runs of that duty, which you can turn off in settings.
+
 ### Changed
 
 - Runs are dated when you enter the duty rather than when it ends, so a run that goes past midnight counts toward the day you started it (#30).
