@@ -12,12 +12,14 @@
 
 Your time is your own time in the duty, to the duty-complete message, or to leaving if it wasn't cleared. It starts at "Duty commenced", so a cleared run's time matches the game's completion time. As a replacement, it starts once you've loaded in. Loading screens, and time disconnected, don't count.
 
+When a cleared run that you weren't a replacement in is logged, its chat line says how your time compares with the usual for that duty: "Slow, 4m over the usual." The usual is from every player's recent runs of the duty logged by the plugin, and there's nothing to say until the site has at least 5 of them. Settings can turn it off.
+
 ## Uploading
 
 - **Your runs** (`/mrt`) lists every run the plugin has recorded, newest first, uploaded or not. An uploaded run's number links to it on the site.
 - **Auto-upload** (on by default) uploads each run when it ends. **Upload N runs** sends every run that isn't uploaded, oldest first. Runs are numbered in the order they reach the site, so runs uploaded late come after any runs you've logged since, but keep the dates they were played.
 - **If the site can't be reached,** the run waits, and it tries again when the plugin starts and after your next run. **If the site refuses a run,** it's marked Failed with the reason, and you can retry it. A retry can't log a run twice.
-- **Fixing a run:** upload it, then edit it on the site. A run that isn't uploaded can be deleted.
+- **Fixing a run:** upload it, then edit its wipes or notes on the site. Its duty, job, date, result and time are what the plugin recorded, so the site won't change them: if one's wrong, delete the run on the site and log it there by hand. A run that isn't uploaded can be deleted.
 - **Deleting runs:** the plugin keeps every run until you delete it. Settings can delete the uploaded runs, or all of them. Runs already on the site stay there.
 
 ## What it keeps and sends

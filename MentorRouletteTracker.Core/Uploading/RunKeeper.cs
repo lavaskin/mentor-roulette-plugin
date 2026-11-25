@@ -91,7 +91,7 @@ public sealed class RunKeeper
 		// waiting instead, so it's never told twice.
 		if (logged is not null)
 		{
-			return new RunOutcome(RunOutcomeKind.Logged, RunNumber: logged.RunNumber, NewDuty: logged.NewDuty);
+			return new RunOutcome(RunOutcomeKind.Logged, RunNumber: logged.RunNumber, NewDuty: logged.NewDuty, Pace: logged.Pace);
 		}
 
 		if (ConnectionFor(_settings) is null)

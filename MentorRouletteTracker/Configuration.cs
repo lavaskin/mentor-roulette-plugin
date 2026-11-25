@@ -30,4 +30,9 @@ public sealed class Configuration : IPluginConfiguration, IUploadSettings
 	/// A line in chat when a run ends, and when runs that were waiting are logged
 	/// </summary>
 	public bool ChatLine { get; set; } = true;
+
+	/// <summary>
+	/// The chat line when a run ends says how its time compares with the usual, when the site says
+	/// </summary>
+	public bool ChatLinePace { get; set; } = true;
 }

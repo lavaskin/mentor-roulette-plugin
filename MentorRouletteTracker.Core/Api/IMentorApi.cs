@@ -31,7 +31,28 @@ public sealed record ApiConnection(string ServerAddress, string Token);
 /// <param name="RunNumber">Its number on the site</param>
 /// <param name="NewDuty">Set when it's the user's first run on its duty. Never set when the site already had the run,
 /// so a retried upload isn't announced twice.</param>
-public sealed record LoggedRun(long Id, int RunNumber, NewDuty? NewDuty = null);
+/// <param name="Pace">How its time compares with the usual for its duty. Null when the site has nothing to compare it
+/// with, when it already had the run, or when it's from a version of the site that doesn't say.</param>
+public sealed record LoggedRun(long Id, int RunNumber, NewDuty? NewDuty = null, RunPace? Pace = null);
+
+/// <summary>
+/// How a run's time compares with every player's recent runs of its duty, as the site works it out
+/// </summary>
+/// <param name="Verdict">Where it ranks among them</param>
+/// <param name="GapSeconds">Its time minus their median, negative when it was quicker</param>
+public sealed record RunPace(PaceVerdict Verdict, int GapSeconds);
+
+/// <summary>
+/// The site's ids for where a run's time ranks, quickest first
+/// </summary>
+public enum PaceVerdict
+{
+	VeryQuick = 1,
+	Quick = 2,
+	AboutUsual = 3,
+	Slow = 4,
+	VerySlow = 5,
+}
 
 /// <summary>
 /// The duties seen once a new duty is logged, with it counted, out of the duties in the roulette, as the site counts
