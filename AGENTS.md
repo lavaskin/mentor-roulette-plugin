@@ -59,17 +59,17 @@ After any change, build in Release and run the tests. **Never run `git clean -x`
 - **The plugin project's `packages.lock.json`** (Dalamud.NET.Sdk turns lock files on) must match its packages, or restore fails. Commit it when packages change.
 - **When Dalamud moves to a new API level,** the build breaks until the plugin moves to it (`Dalamud.NET.Sdk`'s version in the plugin's `.csproj`, plus whatever API changes it brings). Dalamud won't load a plugin built for an old API level anyway, so fix it by updating, not by pinning Dalamud.
 
-`.github/workflows/link-ticket.yml` links each pull request to its ticket from the branch name. The same file is in `ffxiv_api` and `mentor-roulette-tracker`: keep all three identical.
+`.github/workflows/link-ticket.yml` links each pull request to its ticket from the branch name. It calls the Link ticket workflow in `lavaskin/ffxiv-workflows`, which every FFXIV repo shares, at `@main`: change it there, not here.
 
 ## Releasing
 
-In `docs/releasing.md`. Releasing is merging: the Release workflow runs on every push to `main`, and releases `<Version>` (tagging it `vX.Y.Z` and updating `repo.json` on `main`) if it isn't released yet. Its three scripts are in `.github/scripts/`, so they can be run locally: `release-action.sh` decides what a push does, `changelog-section.sh` reads the release's notes, and `repo-json.sh` writes `repo.json`.
+In `docs/releasing.md`. Releasing is merging: the Release workflow runs on every push to `main`, and releases `<Version>` (tagging it `vX.Y.Z` and updating `repo.json` on `main`) if it isn't released yet. Whether a version is tagged yet, and its notes from the changelog, come from `release-plan` in `lavaskin/ffxiv-workflows`, which every FFXIV repo's Release workflow shares. The rest is this repo's own: the build, and `.github/scripts/repo-json.sh`, which writes `repo.json` and can be run locally.
 
 ## Changelog
 
 **Players read this changelog.** A release's section is its notes on GitHub and its changelog in Dalamud's plugin installer, so every entry is written for someone who installed the plugin and has never seen its code.
 
-`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR, ending with the ticket's number (`(#2)`). Only this repo's tickets get one: work tracked in the site's or the API's repo (a ticket shared with the site, say) gets no number, since those repos are private and a player can't open the link. Each entry:
+`CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Each ticket's PR adds its entries under `[Unreleased]`, in the same PR. Tickets live in `lavaskin/ffxiv-hub`, which is private, so an entry cites none of them: a player can't open the link. Only an issue a player opened in this repo gets its number (`(#2)`). Each entry:
 
 - **Is what a player would see or notice in the game,** from the outside looking in: a new window, option, command or chat line, something that works differently, or something that was broken and isn't.
 - **Has no technical details at all:** no files, folders, settings files, classes, APIs, endpoints, status codes, builds, workflows or how it works. Say what the player sees ("Runs that failed to upload are tried again"), never why or how ("retries on a 503").
@@ -82,4 +82,4 @@ A change no player would notice (tech debt, dev builds, CI, the release process,
 - **The changelog is for players, never technical** (see Changelog): Dalamud's installer shows it to everyone who installs the plugin.
 - **Never change `<Version>`** in `MentorRouletteTracker.csproj`: it's bumped by hand when releasing (`docs/releasing.md`).
 - **Custom repository only.** The plugin is never submitted to Dalamud's official repository (DalamudPluginsD17), so its rules on review and AI use don't apply. Dalamud's plugin restrictions and its rules for talking to a backend server still do (<https://dalamud.dev/plugin-publishing/restrictions>, <https://dalamud.dev/plugin-development/technical-considerations>).
-- **Tickets and branches:** tickets are GitHub issues, tracked on the FFXIV project board, and branches are `feature/mrp-<n>-<short-desc>` off `dev`, where `<n>` is the issue's number.
+- **Tickets and branches:** every ticket is an issue in `lavaskin/ffxiv-hub`, on the FFXIV project board, and branches are `feature/<n>-<short-desc>` off `dev`, where `<n>` is the ticket's number there. Its `CONTRIBUTING.md` has the rules every FFXIV repo shares (tickets, branches, pull requests, changelogs, releases); this file has what's particular to the plugin, like its changelog. A player's issue opened here stays open here, and the hub's ticket for the work links to it.

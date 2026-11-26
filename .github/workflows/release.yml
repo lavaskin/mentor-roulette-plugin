@@ -35,27 +35,39 @@ jobs:
           # See docs/releasing.md.
           ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
+      - name: Read the version
+        id: version
+        run: echo "version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' MentorRouletteTracker/MentorRouletteTracker.csproj)" >> "$GITHUB_OUTPUT"
+
+      # Whether vX.Y.Z is tagged yet, and its changelog section if not: shared with the other FFXIV repos. It reads
+      # the changelog before building, so a version bumped without its changelog section makes nothing.
+      - name: Release plan
+        id: release
+        uses: lavaskin/ffxiv-workflows/release-plan@main
+        with:
+          version: ${{ steps.version.outputs.version }}
+          version-file: <Version> in MentorRouletteTracker.csproj
+
+      # release: not tagged yet. repo-json: released, but repo.json doesn't point at it yet (a release whose repo.json
+      # push failed). none: released, and repo.json points at it (a merge that didn't bump the version).
       - name: What to do
         id: plan
+        env:
+          RELEASE: ${{ steps.release.outputs.release }}
+          TAG: ${{ steps.release.outputs.tag }}
         run: |
-          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' MentorRouletteTracker/MentorRouletteTracker.csproj)
-          action=$(.github/scripts/release-action.sh "$version")
+          if [[ $RELEASE == true ]]; then
+            action=release
+          elif jq -e --arg path "/releases/download/$TAG/" 'any(.[]; .DownloadLinkInstall | contains($path))' repo.json >/dev/null; then
+            action=none
+          else
+            action=repo-json
+            echo "::notice::$TAG is released, but repo.json doesn't point at it: updating repo.json"
+          fi
           {
             echo "action=$action"
-            echo "tag=v$version"
+            echo "tag=$TAG"
           } >> "$GITHUB_OUTPUT"
-          case $action in
-            release) echo "::notice::Releasing v$version" ;;
-            repo-json) echo "::notice::v$version is released, but repo.json doesn't point at it: updating repo.json" ;;
-            none) echo "::notice::v$version is already released: nothing to do" ;;
-          esac
-
-      # Before building, so a version bumped without its changelog section makes nothing
-      - name: Read the changelog
-        if: steps.plan.outputs.action == 'release'
-        env:
-          TAG: ${{ steps.plan.outputs.tag }}
-        run: .github/scripts/changelog-section.sh "${TAG#v}" > "$RUNNER_TEMP/notes.md"
 
       - uses: actions/setup-dotnet@v6
         if: steps.plan.outputs.action == 'release'
@@ -84,33 +96,36 @@ jobs:
         if: steps.plan.outputs.action == 'release'
         env:
           TAG: ${{ steps.plan.outputs.tag }}
+          NOTES: ${{ steps.release.outputs.notes }}
         run: |
           out=MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker
           cp "$out/latest.zip" "$RUNNER_TEMP/MentorRouletteTracker.zip"
           cp "$out/MentorRouletteTracker.json" "$RUNNER_TEMP/manifest.json"
           gh release create "$TAG" "$RUNNER_TEMP/MentorRouletteTracker.zip" \
-            --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+            --target "$GITHUB_SHA" --title "$TAG" --notes-file "$NOTES"
 
       # Finishing a release whose repo.json push failed: everything repo.json needs is in the release
       - name: Read the release
         if: steps.plan.outputs.action == 'repo-json'
         env:
           TAG: ${{ steps.plan.outputs.tag }}
+          NOTES: ${{ steps.release.outputs.notes }}
         run: |
           if ! gh release download "$TAG" -p MentorRouletteTracker.zip -D "$RUNNER_TEMP"; then
             echo "::error::$TAG is tagged, but has no release with MentorRouletteTracker.zip: delete the tag (git push origin :$TAG) and push to main again to release it"
             exit 1
           fi
           unzip -p "$RUNNER_TEMP/MentorRouletteTracker.zip" MentorRouletteTracker.json > "$RUNNER_TEMP/manifest.json"
-          gh release view "$TAG" --json body --jq .body > "$RUNNER_TEMP/notes.md"
+          gh release view "$TAG" --json body --jq .body > "$NOTES"
 
       # Last, so Dalamud never offers a version whose zip isn't up yet
       - name: Update repo.json on main
         if: steps.plan.outputs.action != 'none'
         env:
           TAG: ${{ steps.plan.outputs.tag }}
+          NOTES: ${{ steps.release.outputs.notes }}
         run: |
-          .github/scripts/repo-json.sh "$RUNNER_TEMP/manifest.json" "$TAG" "$RUNNER_TEMP/notes.md" "$GITHUB_REPOSITORY" \
+          .github/scripts/repo-json.sh "$RUNNER_TEMP/manifest.json" "$TAG" "$NOTES" "$GITHUB_REPOSITORY" \
             > "$RUNNER_TEMP/repo.json"
           git fetch --quiet origin main
           git checkout -B main origin/main
