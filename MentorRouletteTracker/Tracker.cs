@@ -158,7 +158,7 @@ internal sealed class Tracker : IDisposable
 
 		async Task SayAsync()
 		{
-			Say(ChatLine.Format(run, duty, await outcome), afterLogin: false);
+			Say(ChatLine.Format(run, duty, await outcome, Config.ChatLinePace), afterLogin: false);
 		}
 	}
 

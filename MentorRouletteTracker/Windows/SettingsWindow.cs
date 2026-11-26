@@ -168,6 +168,19 @@ public sealed class SettingsWindow : Window
 		}
 
 		Ui.Tooltip("And when runs that were waiting are logged.");
+
+		ImGui.Indent();
+		ImGui.BeginDisabled(!config.ChatLine);
+		var chatLinePace = config.ChatLinePace;
+		if (ImGui.Checkbox("Say how its time compares with the usual", ref chatLinePace))
+		{
+			config.ChatLinePace = chatLinePace;
+			_tracker.SaveConfig();
+		}
+
+		ImGui.EndDisabled();
+		Ui.Tooltip("Compared with other players' recent runs of the duty.");
+		ImGui.Unindent();
 	}
 
 	private void DrawRunsKept()

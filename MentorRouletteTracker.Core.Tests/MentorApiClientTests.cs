@@ -100,6 +100,28 @@ public class MentorApiClientTests
 	}
 
 	[Fact]
+	public async Task ARunsPace_ComesBackWithIt()
+	{
+		_handler.Respond(HttpStatusCode.Created, """{ "mentorRouletteLogId": 5123, "runNumber": 123, "newDuty": null, "pace": { "verdict": 4, "gapSeconds": -240 } }""");
+
+		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
+
+		Assert.Equal(new LoggedRun(5123, 123, Pace: new RunPace(PaceVerdict.Slow, -240)), result.Value);
+	}
+
+	[Theory]
+	[InlineData("null")]
+	[InlineData("""{ "verdict": 6, "gapSeconds": 240 }""")]
+	public async Task NoPace_OrOneThePluginDoesntKnow_IsLeftOut(string pace)
+	{
+		_handler.Respond(HttpStatusCode.Created, $$"""{ "mentorRouletteLogId": 5123, "runNumber": 123, "pace": {{pace}} }""");
+
+		var result = await _client.LogRunAsync(Connection, Runs.Make(hour: 1), CancellationToken.None);
+
+		Assert.Equal(new LoggedRun(5123, 123), result.Value);
+	}
+
+	[Fact]
 	public async Task ARunsSiteId_CanBeALong_LikeTheApis()
 	{
 		_handler.Respond(HttpStatusCode.Created, """{ "mentorRouletteLogId": 3000000000, "runNumber": 123 }""");

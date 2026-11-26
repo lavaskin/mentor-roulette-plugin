@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-25
+
+### Added
+
+- The chat line after a run says how its time compares with other players' recent runs of that duty, which you can turn off in settings.
+
+### Changed
+
+- Runs are dated when you enter the duty rather than when it ends, so a run that goes past midnight counts toward the day you started it (#30).
+
 ## [1.2.1] - 2026-11-18
 
 ### Changed
@@ -57,7 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A chat line when a run ends gives its number, duty and time, or why it wasn't logged (#2).
 - Runs that couldn't be uploaded are tried again, and ones that weren't can be deleted (#2).
 
-[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.0.1...v1.1.0

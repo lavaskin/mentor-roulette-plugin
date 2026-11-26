@@ -24,6 +24,12 @@ public sealed record InProgressRun
 	public required double ElapsedSeconds { get; init; }
 
 	/// <summary>
+	/// When the player entered the duty, in UTC: the run's date played. Null in a run saved by a version that didn't
+	/// keep it, which is dated at its end minus its time instead.
+	/// </summary>
+	public DateTime? EnteredAt { get; init; }
+
+	/// <summary>
 	/// The last time the player was known to be in the duty, in UTC: when this was saved, or when they logged out
 	/// </summary>
 	public required DateTime LastSeenAt { get; init; }

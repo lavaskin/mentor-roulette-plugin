@@ -46,7 +46,8 @@ public sealed record Run
 	public required int DurationSeconds { get; init; }
 
 	/// <summary>
-	/// When the run ended, in UTC
+	/// When the player entered the duty, in UTC, so a run that goes past midnight counts for the day it started. Runs
+	/// recorded by older versions of the plugin are dated when they ended, and keep those dates.
 	/// </summary>
 	public required DateTime DatePlayed { get; init; }
 

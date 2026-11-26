@@ -68,6 +68,15 @@ public class ChatLineTests
 			ChatLine.Format(Cleared, "The Vault", new RunOutcome(RunOutcomeKind.Logged, RunNumber: 1234, NewDuty: Found(ofTypeInExpansion: Done))));
 	}
 
+	[Fact]
+	public void ALoggedRunsPace_GoesAfterTheTime_AndBeforeWhatItFound()
+	{
+		var outcome = new RunOutcome(RunOutcomeKind.Logged, RunNumber: 1234, NewDuty: Found(), Pace: new RunPace(PaceVerdict.Slow, 240));
+
+		Assert.Equal("[MRT] Logged #1234, The Vault, 32m 10s. Slow, 4m over the usual. New duty found!", ChatLine.Format(Cleared, "The Vault", outcome));
+		Assert.Equal("[MRT] Logged #1234, The Vault, 32m 10s. New duty found!", ChatLine.Format(Cleared, "The Vault", outcome, sayPace: false));
+	}
+
 	[Theory]
 	[InlineData(1, "[MRT] Logged 1 run that was waiting.")]
 	[InlineData(3, "[MRT] Logged 3 runs that were waiting.")]
