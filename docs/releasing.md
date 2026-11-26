@@ -7,7 +7,7 @@ What changed in each version is in `CHANGELOG.md` ([Keep a Changelog](https://ke
 1. On `dev`, in one commit: bump the version, rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`, add a new empty `[Unreleased]` above it, and update the compare links at the bottom (`[Unreleased]` from the new tag to `HEAD`, and the new version from the tag before it to its own; the first release has none before it, so link it to its tag).
 2. Merge `dev` into `main`.
 
-That's all: there's no tag to push. Every push to `main` runs the Release workflow (`.github/workflows/release.yml`), which reads `<Version>`:
+That's all: there's no tag to push. Every push to `main` runs the Release workflow (`.github/workflows/release.yml`), which reads `<Version>`. Whether it's tagged yet, and its changelog section, come from `release-plan`, shared with the other FFXIV repos in [ffxiv-workflows](https://github.com/lavaskin/ffxiv-workflows#release-plan):
 - **Not released yet:** it checks the changelog has the version's section, builds and tests, and makes a GitHub release with the plugin's zip and the version's changelog, which tags the merge `vX.Y.Z`. Then it updates `repo.json` on `main`, so Dalamud offers the new version to everyone who has the repository, usually within a few minutes.
 - **Already released** (a merge that didn't bump the version, or the workflow's own `repo.json` commit): nothing.
 - **Released, but `repo.json` doesn't point at it** (the last release's `repo.json` push failed): it writes `repo.json` from that release, without building.
