@@ -4,11 +4,6 @@ using Dalamud.Bindings.ImGui;
 
 namespace MentorRouletteTracker.Windows;
 
-/// <summary>
-/// A popup asking to confirm a delete, with Delete and Cancel. A popup belongs to the window that opens it, so each
-/// window has its own, and draws it every frame from its <c>Draw</c>, outside any row's id.
-/// </summary>
-/// <param name="title">The popup's title, with an <c>##id</c> unique in its window</param>
 internal sealed class ConfirmDelete(string title)
 {
 	private bool _opening;
@@ -18,9 +13,6 @@ internal sealed class ConfirmDelete(string title)
 		_opening = true;
 	}
 
-	/// <param name="lines">What it says, read every frame so counts stay current. Null closes it: there's nothing
-	/// left to delete.</param>
-	/// <returns>Whether Delete was clicked</returns>
 	public bool Draw(Func<IReadOnlyList<string>?> lines)
 	{
 		if (_opening)

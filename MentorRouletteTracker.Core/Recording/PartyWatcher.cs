@@ -2,38 +2,6 @@ using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Core.Recording;
 
-/// <summary>
-/// Counts the party's deaths, and says when it wipes, from what each frame shows of it and the game's wipe message.
-/// The game only sends its message when it resets the whole party (trials and raids), so in dungeons and guildhests,
-/// where each player returns to the start themselves, the party is all there is.
-/// <list type="bullet">
-/// <item>
-/// <b>A fight</b> starts when anyone alive is in combat, and is over once nobody alive is. Someone who returned to the
-/// start is alive and out of combat, so the fight carries on while the rest of the party fights.
-/// </item>
-/// <item>
-/// <b>A death</b> is a member already seen going from alive to dead, in any party of the alliance. Someone first seen
-/// dead (after the plugin starts, coming back, or joining) isn't one until they're up and die again. Dying, being
-/// raised and dying again is two.
-/// </item>
-/// <item>
-/// <b>A wipe</b> is everyone in the party (all of the alliance in an alliance raid) out of the fight: each is dead, or
-/// died this fight and is now out of combat. Someone raised and back in combat is still fighting. It's checked only as
-/// a death is seen, so it counts as the last one dies: a fight that ends with everyone up again isn't one, and nor is
-/// being first seen dead (after the plugin starts, or coming back), which can't count a wipe that already happened.
-/// </item>
-/// <item>
-/// <b>Between fights,</b> a member who's still dead counts as having died in the next fight, and everyone else starts
-/// it afresh. So the whole party lying dead at once is a wipe, however many fights it took.
-/// </item>
-/// <item>
-/// <b>The game's wipe message</b> and a wipe seen from the party within <see cref="SameWipe"/> of each other are the
-/// same wipe, whichever comes first. The message also ends the fight, since the game raises everyone.
-/// </item>
-/// </list>
-/// Members are told apart by id, not slot, so a replacement in a slot is someone new, and someone who leaves no longer
-/// has to die. Not thread safe.
-/// </summary>
 public sealed class PartyWatcher
 {
 	public static readonly TimeSpan SameWipe = TimeSpan.FromSeconds(30);
@@ -46,15 +14,8 @@ public sealed class PartyWatcher
 	private DateTime? _gameWipeAt;
 	private RunNote.PartyChanged? _lastPartyNote;
 
-	/// <summary>
-	/// What it saw, for the log: the party's size, fights, each death and member up again, and wipes skipped
-	/// </summary>
 	public event Action<RunNote>? Noted;
 
-	/// <summary>
-	/// What one frame shows of the party
-	/// </summary>
-	/// <returns>Its deaths, and a wipe if it finished one that wasn't already counted</returns>
 	public PartyFrame Seen(Party party, DateTime at)
 	{
 		_frame++;
@@ -118,10 +79,6 @@ public sealed class PartyWatcher
 		return wipe is var (source, members) ? new PartyFrame(died.All, source, members) : new PartyFrame(died.All);
 	}
 
-	/// <summary>
-	/// The game's wipe message: it's resetting the whole party
-	/// </summary>
-	/// <returns>The wipe, unless it was already counted from the party</returns>
 	public WipeSource? GameWiped(DateTime at)
 	{
 		EndFight(FightEnd.GameWipeMessage);
@@ -137,10 +94,6 @@ public sealed class PartyWatcher
 		return WipeSource.GameMessage;
 	}
 
-	/// <summary>
-	/// Forgets the party and the fight: a run's starting, or the player's back in it after being away. Everyone's seen
-	/// for the first time again next frame.
-	/// </summary>
 	public void Reset()
 	{
 		_members.Clear();
@@ -163,9 +116,6 @@ public sealed class PartyWatcher
 		return (WipeSource.Party, _members.Count);
 	}
 
-	/// <summary>
-	/// The fight's over, if there was one. Its deaths are forgotten from the next frame, which is between fights.
-	/// </summary>
 	private void EndFight(FightEnd reason)
 	{
 		if (_inFight)
@@ -175,9 +125,6 @@ public sealed class PartyWatcher
 		}
 	}
 
-	/// <summary>
-	/// Between fights: only those still dead carry into the next one
-	/// </summary>
 	private void ForgetDeathsOfTheLiving()
 	{
 		foreach (var member in _members.Values)
@@ -186,9 +133,6 @@ public sealed class PartyWatcher
 		}
 	}
 
-	/// <summary>
-	/// Forgets whoever wasn't in this frame: they left, or aren't here
-	/// </summary>
 	private void ForgetTheGone()
 	{
 		foreach (var (id, member) in _members)
@@ -219,10 +163,6 @@ public sealed class PartyWatcher
 		}
 	}
 
-	/// <summary>
-	/// A line for each death and each member alive again, with the counts after this frame: the player's own party's
-	/// for their own party, and the whole alliance's for the other parties
-	/// </summary>
 	private void NoteDeaths(Counts died, Counts up, bool otherParty)
 	{
 		var diedHere = died.Of(otherParty);
@@ -247,9 +187,6 @@ public sealed class PartyWatcher
 		}
 	}
 
-	/// <summary>
-	/// Members in one frame, in the player's own party and the alliance's others
-	/// </summary>
 	private struct Counts
 	{
 		public int Own { get; private set; }
@@ -275,21 +212,12 @@ public sealed class PartyWatcher
 
 	private sealed class Member
 	{
-		/// <summary>
-		/// The last frame they were seen in
-		/// </summary>
 		public int Frame { get; private set; }
 
 		public bool Dead { get; private set; }
 
-		/// <summary>
-		/// Died this fight, or between fights, dead now
-		/// </summary>
 		public bool DiedThisFight { get; set; }
 
-		/// <summary>
-		/// Alive and in combat
-		/// </summary>
 		public bool InCombat { get; private set; }
 
 		public bool OtherParty { get; private set; }

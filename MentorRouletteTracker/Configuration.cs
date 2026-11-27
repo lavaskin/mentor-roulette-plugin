@@ -4,9 +4,6 @@ using MentorRouletteTracker.Core.Uploading;
 
 namespace MentorRouletteTracker;
 
-/// <summary>
-/// The plugin's settings, which Dalamud keeps in its config file. One connection covers every character on the install.
-/// </summary>
 [Serializable]
 public sealed class Configuration : IPluginConfiguration, IUploadSettings
 {
@@ -14,25 +11,13 @@ public sealed class Configuration : IPluginConfiguration, IUploadSettings
 
 	public string ServerAddress { get; set; } = Core.Api.ServerAddress.Default;
 
-	/// <summary>
-	/// The plugin token from the site's Account page, or null when not connected
-	/// </summary>
 	public string? Token { get; set; }
 
-	/// <summary>
-	/// Whose account the token is for, from when it connected
-	/// </summary>
 	public string? Username { get; set; }
 
 	public bool AutoUpload { get; set; } = true;
 
-	/// <summary>
-	/// A line in chat when a run ends, and when runs that were waiting are logged
-	/// </summary>
 	public bool ChatLine { get; set; } = true;
 
-	/// <summary>
-	/// The chat line when a run ends says how its time compares with the usual, when the site says
-	/// </summary>
 	public bool ChatLinePace { get; set; } = true;
 }

@@ -17,15 +17,11 @@ public sealed class MentorApiClient : IMentorApi
 
 	private readonly HttpClient _http;
 
-	/// <param name="http">From <see cref="CreateHttpClient"/>, or a fake for tests</param>
 	public MentorApiClient(HttpClient http)
 	{
 		_http = http;
 	}
 
-	/// <summary>
-	/// An <see cref="HttpClient"/> with the plugin's <c>User-Agent</c> (<c>MentorRouletteTracker/1.0.0</c>) and a timeout
-	/// </summary>
 	public static HttpClient CreateHttpClient(string version, HttpMessageHandler? handler = null)
 	{
 		var http = handler is null ? new HttpClient() : new HttpClient(handler);
@@ -122,8 +118,6 @@ public sealed class MentorApiClient : IMentorApi
 				}
 			}
 
-			// The messages are shown to players, so they never give status codes. A 502 or 504 comes from the proxy in
-			// front of the site when the site itself is down.
 			return response.StatusCode switch
 			{
 				HttpStatusCode.Unauthorized => new ApiResult<T>(ApiResultKind.Unauthorized, Message: "The site didn't accept the token."),
@@ -134,9 +128,6 @@ public sealed class MentorApiClient : IMentorApi
 		}
 	}
 
-	/// <summary>
-	/// The site's own message: <c>{ "error": "…" }</c>, or the first of a validation problem's errors
-	/// </summary>
 	private static async Task<string> ReadErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
 	{
 		const string fallback = "The site refused it.";
@@ -167,7 +158,6 @@ public sealed class MentorApiClient : IMentorApi
 				}
 			}
 
-			// Not a problem's title, which is HTTP's words ("Bad Request")
 			return fallback;
 		}
 		catch (JsonException)
@@ -189,8 +179,6 @@ public sealed class MentorApiClient : IMentorApi
 		int DurationSeconds,
 		DateTime DatePlayed);
 
-	/// <param name="NewDuty">Optional, like the labels: older versions of the site don't send them</param>
-	/// <param name="Pace">Optional too, for the same reason</param>
 	private sealed record RunResponse(
 		long MentorRouletteLogId,
 		int RunNumber,
@@ -199,7 +187,6 @@ public sealed class MentorApiClient : IMentorApi
 		NewDutyResponse? NewDuty = null,
 		PaceResponse? Pace = null);
 
-	/// <param name="Verdict">Any number binds, so one a newer site adds is left out by <see cref="ToLoggedRun"/></param>
 	private sealed record PaceResponse(PaceVerdict Verdict, int GapSeconds);
 
 	private sealed record NewDutyResponse(int DutiesSeen, int DutiesInRoulette, SeenTotals? OfType, SeenTotals? OfTypeInExpansion);

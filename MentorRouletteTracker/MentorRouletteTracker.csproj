@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
 
-  <!-- The plugin's manifest, which DalamudPackager writes into the zip and the release copies into repo.json.
-       Version is bumped by hand when releasing (see docs/releasing.md). -->
   <PropertyGroup>
     <Version>1.4.0</Version>
     <Author>lavaskin</Author>
@@ -11,8 +9,6 @@
     <Description>Keeps track of your Mentor Roulette runs, with their wipes, the party's deaths and your time, and logs them to your account on Mentor Roulette Tracker (mentorroulette.com).</Description>
     <RepoUrl>https://github.com/lavaskin/mentor-roulette-plugin</RepoUrl>
     <Tags>mentor;roulette;duty;tracker;stats</Tags>
-    <!-- An installed plugin's icon and feedback button come from this manifest in its folder, not from repo.json.
-         Feedback is off: the installer's form goes to Dalamud's team, not to a custom repository's author. -->
     <IconUrl>https://raw.githubusercontent.com/lavaskin/mentor-roulette-plugin/main/images/icon.png</IconUrl>
     <AcceptsFeedback>false</AcceptsFeedback>
   </PropertyGroup>
@@ -20,7 +16,6 @@
   <ItemGroup>
     <ProjectReference Include="..\MentorRouletteTracker.Core\MentorRouletteTracker.Core.csproj" />
   </ItemGroup>
-  <!-- A dev plugin's icon is images/icon.png beside its DLL (the installed plugin's is the manifest's IconUrl) -->
   <ItemGroup>
     <None Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>

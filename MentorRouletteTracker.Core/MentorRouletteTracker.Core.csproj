@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Everything that doesn't need the game: no Dalamud, Lumina or FFXIVClientStructs here, so it can be
-       tested without them. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

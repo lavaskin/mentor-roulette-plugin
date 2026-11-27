@@ -223,7 +223,6 @@ public class UploaderTests
 		answer.SetResult();
 		await pass;
 
-		// It's logged on the site, so it stays here
 		Assert.False(await delete);
 		Assert.Equal(RunStatus.Uploaded, log.Find(run.Id)!.Status);
 	}

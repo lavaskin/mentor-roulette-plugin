@@ -80,7 +80,6 @@ public class LogLineTests
 	[Fact]
 	public void EveryKindOfNote_HasALineOfItsOwn()
 	{
-		// A note without a case would fall back to the record's own text, naming its type
 		var kinds = typeof(RunNote).GetNestedTypes().Where(type => type.IsSubclassOf(typeof(RunNote)) && !type.IsAbstract);
 		var covered = Lines.Select(row => ((RunNote)row[0]).GetType()).ToHashSet();
 

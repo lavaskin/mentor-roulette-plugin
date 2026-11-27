@@ -2,10 +2,6 @@ using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Core.Storage;
 
-/// <summary>
-/// The plugin's runs on disk, as JSON files (<see cref="JsonFile"/>) in its data directory: <c>runs.json</c> (every
-/// run the plugin keeps) and <c>run-in-progress.json</c> (the run being played, while there is one).
-/// </summary>
 public sealed class RunStore
 {
 	public const string RunsFileName = "runs.json";
@@ -17,7 +13,6 @@ public sealed class RunStore
 	private readonly string _inProgressPath;
 	private readonly Action<string> _warn;
 
-	/// <param name="warn">Told about a file that couldn't be read, which is set aside rather than overwritten</param>
 	public RunStore(string directory, Action<string> warn)
 	{
 		Directory.CreateDirectory(directory);
@@ -41,9 +36,6 @@ public sealed class RunStore
 		JsonFile.Write(_runsPath, new RunsFile { Version = Version, Runs = runs });
 	}
 
-	/// <summary>
-	/// Saves the run in progress, or with null deletes the file: there isn't one.
-	/// </summary>
 	public void SaveInProgress(InProgressRun? run)
 	{
 		if (run is null)

@@ -4,32 +4,18 @@ using MentorRouletteTracker.Core.Uploading;
 
 namespace MentorRouletteTracker.Core.Tests;
 
-/// <summary>
-/// The site, answering each run by its duty: a run on a duty in <see cref="Answers"/> gets that answer, and any
-/// other is logged with the next run number
-/// </summary>
 internal sealed class FakeApi : IMentorApi
 {
 	private int _nextRunNumber = 100;
 
 	public Dictionary<uint, ApiResult<LoggedRun>> Answers { get; } = [];
 
-	/// <summary>
-	/// Every run sent, in order
-	/// </summary>
 	public List<Run> Sent { get; } = [];
 
 	public List<ApiConnection> Connections { get; } = [];
 
-	/// <summary>
-	/// Called as each run is sent, before it's answered
-	/// </summary>
 	public Action? OnSend { get; set; }
 
-	/// <summary>
-	/// Holds up the next run's answer: <c>Sending</c> completes once it's sent, and it's answered once <c>Answer</c>
-	/// completes
-	/// </summary>
 	public (TaskCompletionSource Sending, TaskCompletionSource Answer)? Hold { get; set; }
 
 	public Task<ApiResult<string>> GetUsernameAsync(ApiConnection connection, CancellationToken cancellationToken)

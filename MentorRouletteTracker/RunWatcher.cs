@@ -17,17 +17,8 @@ using MentorRouletteTracker.Core.Text;
 
 namespace MentorRouletteTracker;
 
-/// <summary>
-/// Turns the game's events into <see cref="RunRecorder"/>'s, on the framework thread, and saves the run in progress
-/// on every change and every minute, so a crash loses at most a minute of its time. While the player's in a run's duty
-/// and loaded in, it reads the party every frame (<see cref="PartyReader"/>) for the wipes and deaths. What the recorder notes
-/// goes in Dalamud's log, at Information during a run, so it's there at the default level when a run's recorded wrong.
-/// </summary>
 internal sealed unsafe class RunWatcher : IDisposable
 {
-	/// <summary>
-	/// <c>ContentRoulette</c> row 9, "Duty Roulette: Mentor". The only thing the plugin ever records.
-	/// </summary>
 	private const uint MentorRouletteId = 9;
 
 	private static readonly TimeSpan SaveEvery = TimeSpan.FromMinutes(1);
@@ -46,22 +37,10 @@ internal sealed unsafe class RunWatcher : IDisposable
 	private InProgressRun? _snapshot;
 	private DateTime _lastSave = DateTime.MinValue;
 
-	/// <summary>
-	/// Whether the plugin has looked at where the player is since it started
-	/// </summary>
 	private bool _lookedOnStart;
 
-	/// <summary>
-	/// Reading the party has failed this run, and been logged
-	/// </summary>
 	private bool _partyFailed;
 
-	/// <param name="runEnded">Each finished run, on the framework thread, which keeps it and asks for it to be saved</param>
-	/// <param name="runsSaved">Waits for the kept runs to be saved, and says whether they were</param>
-	/// <param name="endMissed">
-	/// The duty of a run dropped because the plugin was off for part of it and didn't see it cleared, on the framework
-	/// thread
-	/// </param>
 	public RunWatcher(
 		IClientState clientState,
 		IDutyState dutyState,
@@ -90,8 +69,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 			{
 				var snapshot = Volatile.Read(ref _snapshot);
 
-				// The run that ended is cleared only once it's in the runs file, so a crash can't lose it. If that save
-				// failed, the old file stays, and carries the run on or ends it again next time.
 				if (snapshot is null && !runsSaved())
 				{
 					_log.Warning("Kept the run in progress, since the runs couldn't be saved");
@@ -130,9 +107,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_dutyState.DutyCompleted -= OnDutyCompleted;
 		_framework.Update -= OnUpdate;
 
-		// Dalamud unloads when the game closes (or when it's unloaded itself), which is treated like a crash: the time up
-		// to now counts, and the time until the plugin's back doesn't. Otherwise only the plugin's going (turned off,
-		// reloaded or updated), and it may miss how the run ends.
 		if (_framework.IsFrameworkUnloading)
 		{
 			Save();
@@ -146,7 +120,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_saver.Flush();
 	}
 
-	// Dalamud raises CfPop off the framework thread
 	private void OnCfPop(ContentFinderCondition _)
 	{
 		OnFramework(() =>
@@ -179,7 +152,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 		});
 	}
 
-	// "Duty commenced", which starts the clock like the game's completion time. It doesn't fire for a replacement.
 	private void OnDutyStarted(IDutyStateEventArgs args)
 	{
 		OnFramework(() =>
@@ -213,24 +185,18 @@ internal sealed unsafe class RunWatcher : IDisposable
 			&& !_condition[ConditionFlag.BetweenAreas]
 			&& !_condition[ConditionFlag.BetweenAreas51];
 
-		// Logout isn't raised on every way out of the game, and the clock mustn't run while they're gone
 		if (_recorder.InDuty && !_clientState.IsLoggedIn)
 		{
 			_recorder.LoggedOut(now);
 			Save();
 		}
 
-		// A run the player's away from (logged out, or saved before the plugin started) carries on or ends once
-		// they're in the world again. Zone changes say where they arrive too, but on logging in that can come before
-		// the game counts them as logged in.
 		if (settled && (!_lookedOnStart || _recorder.IsAway))
 		{
 			_lookedOnStart = true;
 			Arrived(GameMain.Instance()->CurrentContentFinderConditionId);
 		}
 
-		// A replacement's clock, or one back from a disconnect, starts once they've loaded in. Dalamud also counts the
-		// duty as started on the first combat in it, in case "Duty commenced" was missed.
 		if (settled && (_recorder.LoadedIn(now) || (_dutyState.IsDutyStarted && _recorder.Commenced(now, dutyHadStarted: true))))
 		{
 			Save();
@@ -253,10 +219,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 		}
 	}
 
-	/// <summary>
-	/// Runs <paramref name="action"/> on the framework thread (straight away if already on it), since the recorder
-	/// isn't thread safe and the game's memory is read there
-	/// </summary>
 	private void OnFramework(Action action)
 	{
 		_framework.RunOnFrameworkThread(action).ContinueWith(
@@ -273,10 +235,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 		Finished(_recorder.Arrived(contentFinderConditionId, throughDutyFinder, DateTime.UtcNow, acceptedPop));
 	}
 
-	/// <summary>
-	/// The pop the duty finder holds while it's accepted: the player's on their way into what it popped. Not once
-	/// they're in it (in content), so a zone change inside a duty, or after clearing it, can't start a run.
-	/// </summary>
 	private static AcceptedPop? ReadAcceptedPop()
 	{
 		var finder = ContentsFinder.Instance();
@@ -294,10 +252,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 		return type == ContentsType.Roulette && id == MentorRouletteId;
 	}
 
-	/// <summary>
-	/// The duty finder's queue is past the pop: the player's going into, or is in, what it popped. After a pop is
-	/// declined or withdrawn it's back to queued or none.
-	/// </summary>
 	private static bool ThroughDutyFinder()
 	{
 		var finder = ContentsFinder.Instance();
@@ -307,7 +261,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	private void Finished(Run? run)
 	{
-		// Kept before the run in progress is cleared, whose save waits for the runs' (above), so a crash can't lose it
 		if (run is not null)
 		{
 			_runEnded(run);
@@ -316,12 +269,6 @@ internal sealed unsafe class RunWatcher : IDisposable
 		Save();
 	}
 
-	/// <summary>
-	/// Reads the party and hands it to the recorder. A failure is logged once a run, and doesn't stop the rest of the
-	/// frame (the job, the save), so the run's still recorded, with its wipes from the game's wipe message alone, and
-	/// no deaths counted while it fails.
-	/// </summary>
-	/// <returns>Whether it counted a death or a wipe</returns>
 	private bool PartySeen(DateTime now)
 	{
 		try

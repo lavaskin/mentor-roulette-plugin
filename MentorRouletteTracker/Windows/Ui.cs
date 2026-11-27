@@ -6,19 +6,12 @@ using MentorRouletteTracker.Core.Api;
 
 namespace MentorRouletteTracker.Windows;
 
-/// <summary>
-/// Small pieces the windows share
-/// </summary>
 internal static class Ui
 {
 	public static readonly Vector4 LinkColour = new(0.45f, 0.7f, 1f, 1f);
 	public static readonly Vector4 WarningColour = new(1f, 0.75f, 0.3f, 1f);
 	public static readonly Vector4 ErrorColour = new(1f, 0.45f, 0.45f, 1f);
 
-	/// <summary>
-	/// Text that works like a link
-	/// </summary>
-	/// <returns>Whether it was clicked</returns>
 	public static bool Link(string text)
 	{
 		ImGui.TextColored(LinkColour, text);
@@ -30,9 +23,6 @@ internal static class Ui
 		return ImGui.IsItemClicked();
 	}
 
-	/// <summary>
-	/// A link to a web page, opened in the browser, with its address as a tooltip
-	/// </summary>
 	public static void WebLink(string text, string url)
 	{
 		if (Link(text))
@@ -46,9 +36,6 @@ internal static class Ui
 		}
 	}
 
-	/// <summary>
-	/// "Connected as name", with the name linking to the Account page on the site
-	/// </summary>
 	public static void ConnectedAs(string? username, string serverAddress)
 	{
 		ImGui.TextUnformatted("Connected as ");

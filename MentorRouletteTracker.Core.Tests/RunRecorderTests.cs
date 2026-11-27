@@ -15,9 +15,6 @@ public class RunRecorderTests
 
 	private static DateTime At(int seconds) => Start.AddSeconds(seconds);
 
-	/// <summary>
-	/// A Mentor Roulette pop, arriving in the duty at 20s, loading in at 25s, and "Duty commenced" at 30s
-	/// </summary>
 	private void Enter(uint duty = Vault, int popAt = 0, int arriveAt = 20)
 	{
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(popAt));
@@ -53,7 +50,6 @@ public class RunRecorderTests
 	[Fact]
 	public void TheTime_StartsAtDutyCommenced_LikeTheGames()
 	{
-		// The loading screen and the wait for the party to load in don't count: 27s, as the game says
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
 		Assert.False(_recorder.LoadedIn(At(23)));
@@ -80,7 +76,6 @@ public class RunRecorderTests
 		Enter();
 		var run = _recorder.Completed(At(630));
 
-		// Loot and lingering afterwards don't count, and leaving finishes nothing more
 		Assert.Null(_recorder.Arrived(0, throughDutyFinder: false, At(900)));
 		Assert.Equal(600, run!.DurationSeconds);
 	}
@@ -132,7 +127,6 @@ public class RunRecorderTests
 	{
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 
-		// Declined, and the queue's back to none, then the player teleports somewhere
 		Assert.Null(_recorder.Arrived(0, throughDutyFinder: false, At(60)));
 		Assert.False(_recorder.InDuty);
 		Assert.Null(_recorder.Snapshot(At(60)));
@@ -171,7 +165,6 @@ public class RunRecorderTests
 	[Fact]
 	public void APopTheRecorderMissed_IsTakenFromTheDutyFinderOnArrival()
 	{
-		// The plugin was reloaded between the pop and arriving, so it never heard the pop
 		var run = new RunRecorder();
 		run.Arrived(Vault, throughDutyFinder: true, At(20), new AcceptedPop(IsMentorRoulette: true, InProgress: false));
 		run.JobKnown(Paladin);
@@ -220,7 +213,6 @@ public class RunRecorderTests
 	[Fact]
 	public void ADutyQueuedDirectly_AfterAMentorPop_RecordsNothing()
 	{
-		// The Mentor Roulette popped and was declined, then the player queued a duty directly, which popped
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 		_recorder.Popped(isMentorRoulette: false, inProgress: false, At(60));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(90));
@@ -329,7 +321,6 @@ public class RunRecorderTests
 		_recorder.LoggedOut(At(330));
 		Assert.True(_recorder.IsAway);
 
-		// Back in the same duty ten minutes later, and loaded in 15 seconds after that
 		Assert.Null(_recorder.Arrived(Vault, throughDutyFinder: true, At(930)));
 		Assert.True(_recorder.InDuty);
 		Assert.True(_recorder.LoadedIn(At(945)));
@@ -349,7 +340,6 @@ public class RunRecorderTests
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
 		_recorder.LoggedOut(At(25));
 
-		// It commenced while they were away, so there's no "Duty commenced" for them
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
 		_recorder.LoadedIn(At(210));
 		_recorder.JobKnown(Paladin);
@@ -360,7 +350,6 @@ public class RunRecorderTests
 	[Fact]
 	public void ADisconnectOnTheLoadingScreen_WithoutReturning_RecordsNothing()
 	{
-		// They never loaded in, so there's no job for the site and no time
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
 		_recorder.LoggedOut(At(22));
@@ -416,7 +405,6 @@ public class RunRecorderTests
 		_recorder.GameWiped(At(100));
 		var saved = _recorder.Snapshot(At(30 + 600));
 
-		// The game crashes; the plugin starts again, restores the saved run, and the player's back in the duty
 		var restarted = new RunRecorder();
 		restarted.Restore(saved!);
 		Assert.True(restarted.IsAway);
@@ -436,7 +424,6 @@ public class RunRecorderTests
 	[Fact]
 	public void ARunSavedWithoutItsEntryTime_IsDatedAtItsEndMinusItsTime()
 	{
-		// Saved by a version that didn't keep when the player entered
 		Enter();
 		var saved = _recorder.Snapshot(At(30 + 600))! with { EnteredAt = null };
 
@@ -468,7 +455,6 @@ public class RunRecorderTests
 	[Fact]
 	public void AReloadBeforeTheDutyCommenced_StillWaitsForIt()
 	{
-		// Reloaded while the party loads in: the wait doesn't count once it's back, like it wouldn't have without
 		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
 		_recorder.LoadedIn(At(25));
@@ -503,7 +489,6 @@ public class RunRecorderTests
 	[Fact]
 	public void AReplacementReloadedBeforeLoadingIn_CarriesOnOnceLoadedIn()
 	{
-		// "Duty commenced" never comes for a replacement
 		_recorder.Popped(isMentorRoulette: true, inProgress: true, At(0));
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
 		var saved = _recorder.Snapshot(At(21));
@@ -538,10 +523,6 @@ public class RunRecorderTests
 		Assert.False(restarted.IsAway);
 	}
 
-	/// <summary>
-	/// A run in the Vault, turned off at 130s with 100s on its clock and one wipe, restored into a new recorder whose
-	/// dropped runs' duties go into <paramref name="dropped"/>
-	/// </summary>
 	private RunRecorder TurnOffAndRestart(List<uint> dropped)
 	{
 		Enter();
@@ -574,7 +555,6 @@ public class RunRecorderTests
 		var dropped = new List<uint>();
 		var restarted = TurnOffAndRestart(dropped);
 
-		// Back on ten minutes later, still in the duty: the player was there all along
 		Assert.Null(restarted.Arrived(Vault, throughDutyFinder: true, At(730)));
 		Assert.False(restarted.LoadedIn(At(730)));
 		restarted.GameWiped(At(760));
@@ -590,7 +570,6 @@ public class RunRecorderTests
 	[Fact]
 	public void ARunTurnedOff_ThenLeftOnceBack_IsDropped()
 	{
-		// It may have been cleared while the plugin was off
 		var dropped = new List<uint>();
 		var restarted = TurnOffAndRestart(dropped);
 		restarted.Arrived(Vault, throughDutyFinder: true, At(730));
@@ -722,8 +701,6 @@ public class RunRecorderTests
 		Assert.Null(_recorder.Snapshot(At(100)));
 	}
 
-	// Wipes from the party
-
 	private static Party Four(bool dead, bool inCombat = false)
 	{
 		return new Party([.. Enumerable.Range(1, 4).Select(id => new PartyMember((uint)id, dead, !dead && inCombat))]);
@@ -835,7 +812,6 @@ public class RunRecorderTests
 	[Fact]
 	public void LoggingOut_ForgetsTheFight()
 	{
-		// Three died and returned to the start before the disconnect; after it, only the fourth dies
 		Enter();
 		_recorder.PartySeen(Four(dead: false, inCombat: true), At(100));
 		_recorder.PartySeen(new Party([Dead(1), Dead(2), Dead(3), Fighting(4)]), At(110));
@@ -885,7 +861,6 @@ public class RunRecorderTests
 	[Fact]
 	public void ARestoreDuringAWipe_DoesntCountItAgain()
 	{
-		// The game crashed with the party lying dead: the wipe was counted before it
 		Enter();
 		DungeonWipe(100);
 		var saved = _recorder.Snapshot(At(112));
@@ -920,7 +895,6 @@ public class RunRecorderTests
 	[Fact]
 	public void ANewRun_StartsWithANewParty()
 	{
-		// Three of the last run's party lay dead when it was cleared; the next run's party is seen afresh
 		Enter();
 		_recorder.PartySeen(Four(dead: false, inCombat: true), At(100));
 		_recorder.PartySeen(new Party([Dead(1), Dead(2), Dead(3), Fighting(4)]), At(110));
@@ -940,11 +914,6 @@ public class RunRecorderTests
 
 	private static PartyMember Dead(uint id) => new(id, Dead: true, InCombat: false);
 
-	// Deaths
-
-	/// <summary>
-	/// The tank dies and is raised, from <paramref name="from"/>: one death
-	/// </summary>
 	private void TankDies(int from, RunRecorder? recorder = null)
 	{
 		recorder ??= _recorder;
@@ -1042,7 +1011,6 @@ public class RunRecorderTests
 		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
 		_recorder.LoadedIn(At(205));
 
-		// The healer's still lying dead, and the DPS died while the player was away
 		_recorder.PartySeen(new Party([Fighting(1), Dead(2), Dead(3), Fighting(4)]), At(210));
 		_recorder.PartySeen(new Party([Dead(1), Dead(2), Dead(3), Fighting(4)]), At(220));
 
@@ -1087,7 +1055,6 @@ public class RunRecorderTests
 	[Fact]
 	public void ARunSavedWithoutDeaths_CarriesOnWithout_RatherThanSendPartOfThem()
 	{
-		// Saved by a version that didn't count them, then updated mid-run
 		Enter();
 		var saved = _recorder.Snapshot(At(100))! with { Deaths = null };
 
@@ -1104,9 +1071,6 @@ public class RunRecorderTests
 		Assert.DoesNotContain(notes, note => note is RunNote.DeathsCounted);
 	}
 
-	/// <summary>
-	/// A run with <paramref name="deaths"/> deaths so far, restored and finished
-	/// </summary>
 	private (Run Run, List<RunNote> Notes) RunWithDeaths(int deaths)
 	{
 		Enter();
@@ -1145,8 +1109,6 @@ public class RunRecorderTests
 
 		Assert.Equal([new RunNote.DeathsCounted(5)], notes.OfType<RunNote.DeathsCounted>());
 	}
-
-	// What it notes for the log
 
 	private List<RunNote> Notes(RunRecorder recorder)
 	{

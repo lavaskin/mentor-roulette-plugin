@@ -3,10 +3,6 @@ using MentorRouletteTracker.Core.Recording;
 
 namespace MentorRouletteTracker.Core.Tests;
 
-/// <summary>
-/// Each test is a timeline: one <see cref="See"/> per frame that changes something, at its second, with the party as
-/// that frame shows it. Members not showing in the game read as out of combat, so <see cref="Idle"/> covers them too.
-/// </summary>
 public class PartyWatcherTests
 {
 	private const uint Tank = 1;
@@ -37,7 +33,6 @@ public class PartyWatcherTests
 
 	private static PartyMember Other(PartyMember member) => member with { OtherParty = true };
 
-	/// <returns>Whether this frame counted a wipe</returns>
 	private bool See(double second, params PartyMember[] members)
 	{
 		var frame = _watcher.Seen(new Party(members), At(second));
@@ -51,7 +46,6 @@ public class PartyWatcherTests
 		return false;
 	}
 
-	/// <returns>Whether the message counted a wipe</returns>
 	private bool GameMessage(double second)
 	{
 		if (_watcher.GameWiped(At(second)) is { } source)
@@ -68,17 +62,12 @@ public class PartyWatcherTests
 		See(second, Fighting(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 	}
 
-	/// <summary>
-	/// The tank, the healer and one DPS die one at a time, and the other DPS fights on
-	/// </summary>
 	private void ThreeDie(double from)
 	{
 		See(from, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(from + 5, Dead(Tank), Dead(Healer), Fighting(Dps), Fighting(Dps2));
 		See(from + 10, Dead(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
 	}
-
-	// What a wipe is
 
 	[Fact]
 	public void EveryoneDyingAtOnce_IsOneWipe()
@@ -120,7 +109,6 @@ public class PartyWatcherTests
 		AllFighting(0);
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 
-		// The tank returns to the start: alive, and out of combat outside the boss's wall
 		See(20, Idle(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(30, Idle(Tank), Dead(Healer), Fighting(Dps), Fighting(Dps2));
 		See(40, Idle(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
@@ -175,7 +163,6 @@ public class PartyWatcherTests
 	[Fact]
 	public void MembersStillDead_WhenTheNextFightStarts_CountAsHavingDiedInIt()
 	{
-		// Nobody raised the three, and the last one pulled the next pack alone
 		AllFighting(0);
 		ThreeDie(10);
 		See(60, Dead(Tank), Dead(Healer), Dead(Dps), Idle(Dps2));
@@ -194,7 +181,6 @@ public class PartyWatcherTests
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(20, Dead(Tank), Idle(Healer), Idle(Dps), Idle(Dps2));
 
-		// Raised between fights, then idle while the others fight and die
 		See(30, Idle(Tank), Idle(Healer), Idle(Dps), Idle(Dps2));
 		See(40, Idle(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(50, Idle(Tank), Dead(Healer), Dead(Dps), Dead(Dps2));
@@ -205,7 +191,6 @@ public class PartyWatcherTests
 	[Fact]
 	public void EveryoneDyingOnce_ButRaisedAndFightingOn_IsNoWipe()
 	{
-		// A messy fight the party wins: each dies once and is raised back into the fight
 		AllFighting(0);
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(15, Fighting(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
@@ -223,7 +208,6 @@ public class PartyWatcherTests
 	[Fact]
 	public void EveryoneWhoDiedReturningToTheStart_WhileTheLastStandsIdle_IsNoWipe()
 	{
-		// The boss reset with one member alive: not everyone died
 		AllFighting(0);
 		See(10, Dead(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
 		See(20, Idle(Tank), Idle(Healer), Idle(Dps), Fighting(Dps2));
@@ -235,7 +219,6 @@ public class PartyWatcherTests
 	[Fact]
 	public void TheLastMemberStandingLeaving_IsNoWipe()
 	{
-		// Nobody died as they left, and the dead return to the start as usual
 		AllFighting(0);
 		See(10, Dead(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
 
@@ -317,8 +300,6 @@ public class PartyWatcherTests
 		Assert.Equal(2, _wipes.Count);
 	}
 
-	// Deaths
-
 	[Fact]
 	public void AMemberDying_IsOneDeath_HoweverLongTheyLieDead()
 	{
@@ -387,7 +368,6 @@ public class PartyWatcherTests
 	[Fact]
 	public void FirstSeenDead_IsntADeath_UntilTheyreUpAndDieAgain()
 	{
-		// Joined as a replacement, or back from a disconnect, with the tank lying dead
 		See(0, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		Assert.Equal(0, _deaths);
@@ -402,7 +382,6 @@ public class PartyWatcherTests
 	{
 		AllFighting(0);
 
-		// The tank leaves alive, and their replacement loads in dead in the same slot
 		See(10, Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(20, Dead(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		Assert.Equal(0, _deaths);
@@ -418,7 +397,6 @@ public class PartyWatcherTests
 		AllFighting(0);
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 
-		// The tank leaves while dead, and their replacement arrives alive in the same slot, then dies
 		See(20, Fighting(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(30, Dead(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 
@@ -432,7 +410,6 @@ public class PartyWatcherTests
 		AllFighting(0);
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 
-		// The tank's slot is left out for a while (disconnected, or not loaded), and comes back still dead
 		See(20, Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(30, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 
@@ -452,8 +429,6 @@ public class PartyWatcherTests
 		See(30, Dead(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
 		Assert.Equal(2, _deaths);
 	}
-
-	// Who's in the party
 
 	[Fact]
 	public void OnYourOwn_YourDeathIsAWipe()
@@ -488,7 +463,6 @@ public class PartyWatcherTests
 		AllFighting(0);
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 
-		// The tank who died leaves, and a replacement joins in their slot
 		See(20, Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(30, Fighting(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		Assert.False(See(40, Fighting(Newcomer), Dead(Healer), Dead(Dps), Dead(Dps2)));
@@ -527,12 +501,9 @@ public class PartyWatcherTests
 		Assert.Empty(_wipes);
 	}
 
-	// Already dead when first seen
-
 	[Fact]
 	public void FirstSeenDead_CountsTowardsTheFight()
 	{
-		// The plugin started with the tank and the healer dead, and the DPS fighting on
 		See(0, Dead(Tank), Dead(Healer), Fighting(Dps), Fighting(Dps2));
 		See(10, Dead(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
 
@@ -542,7 +513,6 @@ public class PartyWatcherTests
 	[Fact]
 	public void FirstSeenDeadMidFight_ThenBackAtTheStart_StillCountsAsHavingDiedThisFight()
 	{
-		// The tank's slot loads in mid-fight, dead, then they return to the start
 		See(0, Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(5, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(10, Idle(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
@@ -577,7 +547,6 @@ public class PartyWatcherTests
 		AllFighting(0);
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 
-		// The tank disconnects and comes back alive, after the fight they died in
 		See(20, Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(30, Idle(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(40, Idle(Tank), Dead(Healer), Dead(Dps), Dead(Dps2));
@@ -585,12 +554,9 @@ public class PartyWatcherTests
 		Assert.Empty(_wipes);
 	}
 
-	// Combat that can't be seen
-
 	[Fact]
 	public void SomeoneNotShowing_CountsAsOutOfCombat()
 	{
-		// Only the tank shows in combat: once they're dead, the fight looks over to the watcher
 		See(0, Fighting(Tank), Idle(Healer), Idle(Dps), Idle(Dps2));
 		See(10, Dead(Tank), Idle(Healer), Idle(Dps), Idle(Dps2));
 
@@ -601,8 +567,6 @@ public class PartyWatcherTests
 	[Fact]
 	public void TheKnownMiss_BackAtTheStart_WithTheFightTooFarAwayToShow()
 	{
-		// The player died, returned to the start, and can't see the others fight: the fight looks over, and its
-		// deaths are forgotten, so the others dying later isn't a wipe. It can be fixed on the site.
 		AllFighting(0);
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(20, Idle(Tank), Idle(Healer), Idle(Dps), Idle(Dps2));
@@ -611,12 +575,9 @@ public class PartyWatcherTests
 		Assert.Empty(_wipes);
 	}
 
-	// The game's wipe message
-
 	[Fact]
 	public void TheGamesMessage_OnItsOwn_IsAWipe()
 	{
-		// The duty failed some other way, like an escort dying
 		AllFighting(0);
 
 		Assert.True(GameMessage(30));
@@ -643,7 +604,6 @@ public class PartyWatcherTests
 	[InlineData(30)]
 	public void TheGamesMessage_ThenAPartyWipe_CountOnce(double after)
 	{
-		// The last death is read after the message: the fade-out came first
 		AllFighting(0);
 		See(10, Dead(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
 		GameMessage(20);
@@ -694,7 +654,6 @@ public class PartyWatcherTests
 		See(28, Dead(Tank), Dead(Healer), Dead(Dps), Dead(Dps2));
 		GameMessage(30);
 
-		// The game raises everyone at the start, out of combat
 		See(32, Dead(Tank), Dead(Healer), Dead(Dps), Dead(Dps2));
 		See(35, Idle(Tank), Idle(Healer), Idle(Dps), Idle(Dps2));
 
@@ -708,15 +667,12 @@ public class PartyWatcherTests
 		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		GameMessage(20);
 
-		// Raised by the game, the tank waits while the others start straight away and die
 		See(21, Idle(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
 		See(30, Idle(Tank), Dead(Healer), Dead(Dps), Dead(Dps2));
 
 		Assert.Equal([WipeSource.GameMessage], _wipes);
 		Assert.Contains(new RunNote.FightOver(FightEnd.GameWipeMessage), _notes);
 	}
-
-	// Alliance raids
 
 	private static PartyMember[] Alliance(Func<uint, PartyMember> own, Func<uint, PartyMember> others)
 	{
@@ -756,8 +712,6 @@ public class PartyWatcherTests
 		Assert.DoesNotContain(_notes, note => note is RunNote.FightOver);
 	}
 
-	// Forgetting
-
 	[Fact]
 	public void Reset_ForgetsTheFightsDeaths()
 	{
@@ -781,8 +735,6 @@ public class PartyWatcherTests
 
 		Assert.False(See(30, Dead(Tank), Dead(Healer), Dead(Dps), Dead(Dps2)));
 	}
-
-	// What it notes for the log
 
 	[Fact]
 	public void TheParty_IsNoted_WhenItChanges()
@@ -887,12 +839,6 @@ public class PartyWatcherTests
 		Assert.DoesNotContain(_notes, note => note is RunNote.MemberDied);
 	}
 
-	// Rules that hold whatever happens
-
-	/// <summary>
-	/// Thousands of random frames of a party of four, with deaths, raises, returns to the start, combat coming and
-	/// going, and members leaving and joining, checked against the rules that hold whatever the order
-	/// </summary>
 	[Theory]
 	[InlineData(1)]
 	[InlineData(2)]

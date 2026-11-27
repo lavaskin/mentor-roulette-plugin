@@ -8,9 +8,6 @@ using MentorRouletteTracker.Core.Text;
 
 namespace MentorRouletteTracker.Windows;
 
-/// <summary>
-/// The runs the plugin has recorded (<c>/mrt</c>), newest first
-/// </summary>
 public sealed class RunsWindow : Window
 {
 	private const string NumberingNote = "Runs are numbered in the order they reach the site. These will come after any "
