@@ -3,8 +3,8 @@
     "Author": "lavaskin",
     "Name": "Mentor Roulette Tracker",
     "InternalName": "MentorRouletteTracker",
-    "AssemblyVersion": "1.3.0.0",
-    "Description": "Keeps track of your Mentor Roulette runs and logs them to your account on Mentor Roulette Tracker (mentorroulette.com).",
+    "AssemblyVersion": "1.4.0.0",
+    "Description": "Keeps track of your Mentor Roulette runs, with their wipes, the party's deaths and your time, and logs them to your account on Mentor Roulette Tracker (mentorroulette.com).",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/lavaskin/mentor-roulette-plugin",
     "Tags": [
@@ -22,11 +22,11 @@
     "IconUrl": "https://raw.githubusercontent.com/lavaskin/mentor-roulette-plugin/main/images/icon.png",
     "Punchline": "Logs your Mentor Roulette runs to Mentor Roulette Tracker.",
     "AcceptsFeedback": false,
-    "DownloadLinkInstall": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.3.0/MentorRouletteTracker.zip",
-    "DownloadLinkUpdate": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.3.0/MentorRouletteTracker.zip",
-    "DownloadLinkTesting": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.3.0/MentorRouletteTracker.zip",
-    "Changelog": "### Added\n\n- The chat line after a run says how its time compares with other players' recent runs of that duty, which you can turn off in settings.\n\n### Changed\n\n- Runs are dated when you enter the duty rather than when it ends, so a run that goes past midnight counts toward the day you started it (#30).",
-    "LastUpdate": "1795662151",
+    "DownloadLinkInstall": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.4.0/MentorRouletteTracker.zip",
+    "DownloadLinkUpdate": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.4.0/MentorRouletteTracker.zip",
+    "DownloadLinkTesting": "https://github.com/lavaskin/mentor-roulette-plugin/releases/download/v1.4.0/MentorRouletteTracker.zip",
+    "Changelog": "### Added\n\n- Each run records the party's deaths, alliance raids included, and the site shows them.\n- The runs window has a Deaths column.\n\n### Fixed\n\n- Wipes in dungeons and guildhests are counted now.",
+    "LastUpdate": "1795768458",
     "IsHide": false,
     "IsTestingExclusive": false
   }
