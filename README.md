@@ -16,7 +16,7 @@ Once it's connected, there's nothing to do: each run is logged when it ends, wit
 - **Runs played before connecting are kept,** so you can upload them once you connect. If the site can't be reached, the run waits and is tried again later.
 - **To fix a run,** edit it on the site.
 
-It never sends your character's name, or anything that identifies anyone else in the duty: only a count of the party's deaths. When a run counts, how its time is measured, and what the plugin keeps and sends are in [How runs are recorded](docs/runs.md).
+It never sends your character's name, or anything that identifies anyone else in the duty, so no names or ids: only a count of the party's deaths. When a run counts, how its time is measured, and what the plugin keeps and sends are in [How runs are recorded](docs/runs.md).
 
 ## Development
 

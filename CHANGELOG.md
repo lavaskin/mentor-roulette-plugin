@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Counts the party's deaths in each run, alliance raids included, and uploads them with the run. A Deaths column in the runs window.
+- Each run records the party's deaths, alliance raids included, and the site shows them.
+- The runs window has a Deaths column.
 
 ### Fixed
 
