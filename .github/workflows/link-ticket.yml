@@ -1,13 +1,8 @@
 name: Link ticket
 
-# Links each pull request to its ticket in lavaskin/ffxiv-hub, from the branch name (feature/<n>-<desc>). The
-# workflow is shared with the other FFXIV repos: see https://github.com/lavaskin/ffxiv-workflows#link-ticket.
-
 on:
   pull_request:
     branches: [dev]
-    # synchronize because workflows don't run while a pull request has a merge conflict, so one opened
-    # with a conflict is linked by the push that fixes it. edited catches a base changed to dev.
     types: [opened, reopened, edited, synchronize]
 
 permissions: {}
