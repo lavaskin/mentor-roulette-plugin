@@ -55,4 +55,4 @@ jobs:
 
       - name: Check comments
         if: ${{ !cancelled() }}
-        uses: lavaskin/ffxiv-workflows/check-comments@feature/27-no-comments
+        uses: lavaskin/ffxiv-workflows/check-comments@main
