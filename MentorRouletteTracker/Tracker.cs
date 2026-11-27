@@ -158,7 +158,38 @@ internal sealed class Tracker : IDisposable
 
 		async Task SayAsync()
 		{
-			Say(ChatLine.Format(run, duty, await outcome, Config.ChatLinePace), afterLogin: false);
+			var ended = await outcome;
+			LogOutcome(ended);
+			Say(ChatLine.Format(run, duty, ended, Config.ChatLinePace), afterLogin: false);
+		}
+	}
+
+	/// <summary>
+	/// The run that just ended's upload, or why it wasn't uploaded: the run's last step, at Information like the rest
+	/// of it
+	/// </summary>
+	private void LogOutcome(RunOutcome outcome)
+	{
+		switch (outcome.Kind)
+		{
+			case RunOutcomeKind.Logged:
+				_log.Information("Uploaded run as #{RunNumber}", outcome.RunNumber.GetValueOrDefault());
+				break;
+			case RunOutcomeKind.Refused:
+				_log.Warning("The site refused the run: {Reason}", outcome.Reason ?? "no reason given");
+				break;
+			case RunOutcomeKind.NeedsReconnect:
+				_log.Warning("The site no longer accepts the plugin's connection, so uploads are paused until it's connected again");
+				break;
+			case RunOutcomeKind.Waiting:
+				_log.Warning("Couldn't upload the run, so it'll be tried again later: {Problem}", Uploader.Problem ?? "the site couldn't be reached");
+				break;
+			case RunOutcomeKind.NotConnected:
+				_log.Information("Not uploaded: the plugin isn't connected to the site");
+				break;
+			case RunOutcomeKind.AutoUploadOff:
+				_log.Information("Not uploaded: auto-upload is off");
+				break;
 		}
 	}
 
@@ -177,6 +208,11 @@ internal sealed class Tracker : IDisposable
 	/// </summary>
 	private void OnWaitingRunsLogged(IReadOnlyList<LoggedRun> logged)
 	{
+		foreach (var run in logged)
+		{
+			_log.Debug("Uploaded a run that was waiting as #{RunNumber}", run.RunNumber);
+		}
+
 		Say(ChatLine.FormatWaiting(logged), afterLogin: true);
 	}
 

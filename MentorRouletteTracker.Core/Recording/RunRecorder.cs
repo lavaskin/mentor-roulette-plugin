@@ -28,6 +28,11 @@ namespace MentorRouletteTracker.Core.Recording;
 /// it's given out only if the recorder sees the clear. Ending any other way drops it, and raises
 /// <see cref="EndMissed"/>.
 /// </para>
+/// <para>
+/// Its wipes are the party's, from <see cref="PartyWatcher"/>: everyone in the party dying in the same fight, or the
+/// game's wipe message. Only while the player's in the duty: the party's seen afresh each time they're in it, at the
+/// run's start and on coming back.
+/// </para>
 /// Not thread safe: the plugin calls it from the game's framework thread only.
 /// </summary>
 public sealed class RunRecorder
@@ -38,8 +43,19 @@ public sealed class RunRecorder
 	/// </summary>
 	public static readonly TimeSpan PopLifetime = TimeSpan.FromMinutes(5);
 
+	private readonly PartyWatcher _party = new();
 	private Pop? _pop;
 	private Current? _current;
+
+	public RunRecorder()
+	{
+		_party.Noted += Note;
+	}
+
+	/// <summary>
+	/// What it saw and decided, for the log
+	/// </summary>
+	public event Action<RunNote>? Noted;
 
 	/// <summary>
 	/// A run the plugin was turned off for part of ended without the recorder seeing the clear, and was dropped. Gives
@@ -71,6 +87,7 @@ public sealed class RunRecorder
 	public void Popped(bool isMentorRoulette, bool inProgress, DateTime at)
 	{
 		_pop = isMentorRoulette ? new Pop(inProgress, at) : null;
+		Note(isMentorRoulette ? new RunNote.Popped(inProgress) : new RunNote.PopIgnored());
 	}
 
 	/// <summary>
@@ -97,13 +114,19 @@ public sealed class RunRecorder
 		{
 			if (contentFinderConditionId != 0 && contentFinderConditionId == current.GameContentId)
 			{
-				if (current is { Away: true, ClockRanWhileOff: true })
+				if (current.Away)
 				{
-					current.RunningSince = current.LastSeenAt;
-					current.ClockRanWhileOff = false;
+					if (current.ClockRanWhileOff)
+					{
+						current.RunningSince = current.LastSeenAt;
+						current.ClockRanWhileOff = false;
+					}
+
+					current.Away = false;
+					_party.Reset();
+					Note(new RunNote.BackInRun(current.GameContentId));
 				}
 
-				current.Away = false;
 				return null;
 			}
 
@@ -121,6 +144,8 @@ public sealed class RunRecorder
 				EnteredAt = at,
 				LastSeenAt = at,
 			};
+			_party.Reset();
+			Note(new RunNote.Started(contentFinderConditionId, pop.InProgress));
 		}
 
 		return finished;
@@ -139,14 +164,18 @@ public sealed class RunRecorder
 		}
 
 		current.RunningSince = at;
+		Note(new RunNote.ClockStarted(ClockStartReason.LoadedIn));
 		return true;
 	}
 
 	/// <summary>
 	/// "Duty commenced": starts the clock, if it hasn't started
 	/// </summary>
+	/// <param name="dutyHadStarted">
+	/// It's the game saying the duty has started, not the message, which can be missed (the plugin reloaded as it came)
+	/// </param>
 	/// <returns>Whether it started the clock</returns>
-	public bool Commenced(DateTime at)
+	public bool Commenced(DateTime at, bool dutyHadStarted = false)
 	{
 		if (_current is not { Away: false, RunningSince: null } current)
 		{
@@ -154,6 +183,7 @@ public sealed class RunRecorder
 		}
 
 		current.RunningSince = at;
+		Note(new RunNote.ClockStarted(dutyHadStarted ? ClockStartReason.DutyHadStarted : ClockStartReason.DutyCommenced));
 		return true;
 	}
 
@@ -165,15 +195,48 @@ public sealed class RunRecorder
 		if (NeedsJob && classJobId != 0)
 		{
 			_current!.GameClassJobId = classJobId;
+			Note(new RunNote.JobKnown(classJobId));
 		}
 	}
 
-	public void Wiped()
+	/// <summary>
+	/// What one frame shows of the party, once the player's loaded in. Counts a wipe if it finished one.
+	/// </summary>
+	/// <returns>Whether it counted a wipe</returns>
+	public bool PartySeen(Party party, DateTime at)
 	{
-		if (InDuty)
+		if (!InDuty || _party.Seen(party, at) is not var (source, members))
 		{
-			_current!.Wipes++;
+			return false;
 		}
+
+		CountWipe(source, members);
+		return true;
+	}
+
+	/// <summary>
+	/// The game's wipe message, when it resets the whole party. Counts a wipe unless it was already counted from the
+	/// party.
+	/// </summary>
+	public void GameWiped(DateTime at)
+	{
+		if (!InDuty)
+		{
+			Note(new RunNote.WipeIgnored());
+			return;
+		}
+
+		if (_party.GameWiped(at) is { } source)
+		{
+			CountWipe(source, 0);
+		}
+	}
+
+	private void CountWipe(WipeSource source, int members)
+	{
+		var current = _current!;
+		current.Wipes++;
+		Note(new RunNote.Wiped(current.Wipes, source, members));
 	}
 
 	/// <summary>
@@ -198,6 +261,7 @@ public sealed class RunRecorder
 		current.Away = true;
 		current.StartsOn = ClockStart.LoadedIn;
 		current.LastSeenAt = at;
+		Note(new RunNote.LoggedOut((int)current.Elapsed.TotalSeconds));
 	}
 
 	/// <summary>
@@ -267,6 +331,7 @@ public sealed class RunRecorder
 			PluginWasOff = run.PluginTurnedOff,
 			ClockRanWhileOff = run.ClockRanWhileOff,
 		};
+		Note(new RunNote.Restored(run.GameContentId, run.PluginTurnedOff));
 	}
 
 	private Run? Finish(bool cleared, DateTime at)
@@ -276,12 +341,14 @@ public sealed class RunRecorder
 
 		if (current.PluginWasOff && !cleared)
 		{
+			Note(new RunNote.Dropped(current.GameContentId, DropReason.PluginWasOff));
 			EndMissed?.Invoke(current.GameContentId);
 			return null;
 		}
 
 		if (current.GameClassJobId == 0)
 		{
+			Note(new RunNote.Dropped(current.GameContentId, DropReason.NeverLoadedIn));
 			return null;
 		}
 
@@ -289,7 +356,7 @@ public sealed class RunRecorder
 		StopClock(current, endedAt);
 		var enteredAt = current.EnteredAt ?? endedAt - current.Elapsed;
 
-		return new Run
+		var run = new Run
 		{
 			Id = current.Id,
 			GameContentId = current.GameContentId,
@@ -300,6 +367,13 @@ public sealed class RunRecorder
 			DurationSeconds = Math.Max(1, (int)current.Elapsed.TotalSeconds),
 			DatePlayed = DateTime.SpecifyKind(enteredAt, DateTimeKind.Utc),
 		};
+		Note(new RunNote.Ended(run, current.Away));
+		return run;
+	}
+
+	private void Note(RunNote note)
+	{
+		Noted?.Invoke(note);
 	}
 
 	private static void StopClock(Current current, DateTime at)
