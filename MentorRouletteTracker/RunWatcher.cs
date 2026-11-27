@@ -51,6 +51,11 @@ internal sealed unsafe class RunWatcher : IDisposable
 	/// </summary>
 	private bool _lookedOnStart;
 
+	/// <summary>
+	/// Reading the party has failed this run, and been logged
+	/// </summary>
+	private bool _partyFailed;
+
 	/// <param name="runEnded">Each finished run, on the framework thread, which keeps it and asks for it to be saved</param>
 	/// <param name="runsSaved">Waits for the kept runs to be saved, and says whether they were</param>
 	/// <param name="endMissed">
@@ -231,7 +236,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 			Save();
 		}
 
-		if (settled && _recorder.InDuty && _recorder.PartySeen(_party.Read(), now))
+		if (settled && _recorder.InDuty && PartySeen(now))
 		{
 			Save();
 		}
@@ -311,8 +316,36 @@ internal sealed unsafe class RunWatcher : IDisposable
 		Save();
 	}
 
+	/// <summary>
+	/// Reads the party and hands it to the recorder. A failure is logged once a run, and doesn't stop the rest of the
+	/// frame (the job, the save), so the run's still recorded, with its wipes from the game's wipe message alone.
+	/// </summary>
+	/// <returns>Whether it counted a wipe</returns>
+	private bool PartySeen(DateTime now)
+	{
+		try
+		{
+			return _recorder.PartySeen(_party.Read(), now);
+		}
+		catch (Exception exception)
+		{
+			if (!_partyFailed)
+			{
+				_partyFailed = true;
+				_log.Warning(exception, "Couldn't read the party, so wipes only count from the game's wipe message while it fails (logged once a run)");
+			}
+
+			return false;
+		}
+	}
+
 	private void OnNoted(RunNote note)
 	{
+		if (note is RunNote.Started)
+		{
+			_partyFailed = false;
+		}
+
 		var line = LogLine.Format(note, _names.Duty, _names.Job);
 		if (note is RunNote.Ignored)
 		{
