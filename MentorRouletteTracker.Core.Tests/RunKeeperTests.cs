@@ -8,7 +8,7 @@ namespace MentorRouletteTracker.Core.Tests;
 public class RunKeeperTests
 {
 	private readonly FakeApi _api = new();
-	private readonly FakeSettings _settings = new();
+	private readonly Settings _settings = ConnectedSettings.Make();
 	private readonly RunLog _log = new([]);
 	private readonly Uploader _uploader;
 	private readonly RunKeeper _keeper;

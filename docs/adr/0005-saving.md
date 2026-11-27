@@ -73,9 +73,11 @@ When a run ends, `RunWatcher.Finished` hands it on first (`runEnded`: `Tracker` 
 
 ## The settings are one connection for every character
 
-`Configuration` is the plugin's settings, which Dalamud keeps in its plugin config file. One connection covers every character on the install: the token isn't per character, and the character's name is never stored. `Token` is the plugin token from the site's Account page, null when not connected, and `Username` is whose account it's for, as the site said when it connected (it isn't refreshed). Core reads the server address, the token and auto-upload through `IUploadSettings`, so it needs no Dalamud reference. Settings change on the framework thread only, and are saved through a `BackgroundSaver` like the runs.
+`Configuration` is the plugin's settings, which Dalamud keeps in its plugin config file. One connection covers every character on the install: the token isn't per character, and the character's name is never stored. `Token` is the plugin token from the site's Account page, null when not connected, and `Username` is whose account it's for, as the site said when it connected (it isn't refreshed). Settings change on the framework thread only, and are saved through a `BackgroundSaver` like the runs.
 
-`MentorRouletteTracker/Configuration.cs`, `MentorRouletteTracker.Core/Uploading/IUploadSettings.cs`, `MentorRouletteTracker/Tracker.cs` (`SaveConfig`, `ConnectAsync`).
+Every setting lives in Core's `Settings`, a plain class with no Dalamud reference, and `Configuration` is `Settings` plus Dalamud's `IPluginConfiguration`, with nothing of its own. So Core reads the settings it needs (the server address, the token, auto-upload) from the real type, and the tests save and read the real type too, rather than a copy of its shape that could drift without failing. A setting is added to `Settings`, never to `Configuration`. Dalamud saves the installed plugin's settings under `Configuration`'s type name, which stays the same, so both settings files keep their keys.
+
+`MentorRouletteTracker.Core/Models/Settings.cs`, `MentorRouletteTracker/Configuration.cs`, `MentorRouletteTracker/Tracker.cs` (`SaveConfig`, `ConnectAsync`).
 
 ## A dev build keeps its own files
 

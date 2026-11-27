@@ -12,7 +12,7 @@ public class UploaderTests
 	private const uint UnauthorizedDuty = 3;
 
 	private readonly FakeApi _api = new();
-	private readonly FakeSettings _settings = new();
+	private readonly Settings _settings = ConnectedSettings.Make();
 
 	public UploaderTests()
 	{
