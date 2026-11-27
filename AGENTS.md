@@ -23,10 +23,11 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
   - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `LogLine`, `Milestones`, `Names`).
 - **How it fits together:**
   - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, loaded in, duty commenced, the game's wipe message, duty complete, logout) to `Core.Recording.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute. While the player's in a run's duty, it also reads the party every frame through `PartyReader` (HP and combat, by the game's object id) and hands it over as plain `PartySlot`s.
-  - `RunRecorder` counts wipes and deaths through `PartyWatcher`, which turns each frame's party and the game's wipe message into deaths and wipes (its summary has the rules). Everything it sees and decides comes out as `RunNote`s, which `RunWatcher` logs through `Core.Text.LogLine`. Notes carry counts, never who anyone is.
+  - `RunRecorder` counts wipes and deaths through `PartyWatcher`, which turns each frame's party and the game's wipe message into deaths and wipes ([ADR 0004](docs/adr/0004-wipes-and-deaths.md) has the rules). Everything it sees and decides comes out as `RunNote`s, which `RunWatcher` logs through `Core.Text.LogLine`. Notes carry counts, never who anyone is.
   - `Tracker` (plugin) hands each finished run to `Core.Uploading.RunKeeper`, which keeps it in `RunLog` (saved by `RunStore`) and uploads it through `Uploader` and `Api.MentorApiClient` if auto-upload's on.
   - `PluginFiles` (plugin) says where the settings and runs live. A dev build keeps its own in the config directory's `dev` folder, apart from the installed plugin's.
-  - The upload rules (oldest first, what holds up later runs, 401 and 400) are in `Uploader`'s summary.
+  - The upload rules (oldest first, what holds up later runs, 401 and 400) are in [ADR 0006](docs/adr/0006-uploading-and-the-sites-api.md).
+- **Why the code is the way it is** is in `docs/adr/` ([README](docs/adr/README.md)), one ADR per topic: read the one for what you're changing first.
 - **Style:** tabs in C#, file-scoped namespaces, `_camelCase` private instance fields and PascalCase static ones, like the API.
 - **Windows** use Dalamud's `Window` and `WindowSystem`. **Commands:** `/mrt` (runs) and `/mrt config` (settings).
 - **Nothing blocks the game's frame:** network calls and file writes run off the framework thread.
@@ -80,6 +81,7 @@ A change no player would notice (tech debt, dev builds, CI, the release process,
 
 ## Rules
 
+- **No code comments,** in the code, the `.csproj` files, the workflows or the scripts. A decision the code can't show goes in the ADR for its topic (`docs/adr/`), and a hack gets a ticket. A test for a bug that really happened says which in its name (`…_Regression_<WhatWentWrong>`). CI's comment check fails on a new comment: [ADR 0001](docs/adr/0001-no-code-comments.md) has how to run it locally, and the `delete-comment` skill (`.agents/skills/`) how to clear one.
 - **The changelog is for players, never technical** (see Changelog): Dalamud's installer shows it to everyone who installs the plugin.
 - **Never change `<Version>`** in `MentorRouletteTracker.csproj`: it's bumped by hand when releasing (`docs/releasing.md`).
 - **Custom repository only.** The plugin is never submitted to Dalamud's official repository (DalamudPluginsD17), so its rules on review and AI use don't apply. Dalamud's plugin restrictions and its rules for talking to a backend server still do (<https://dalamud.dev/plugin-publishing/restrictions>, <https://dalamud.dev/plugin-development/technical-considerations>).

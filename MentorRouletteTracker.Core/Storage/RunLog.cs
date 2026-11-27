@@ -2,10 +2,6 @@ using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Core.Storage;
 
-/// <summary>
-/// Every run the plugin has recorded, newest first. Thread safe: the windows read it each frame while uploads
-/// change it in the background.
-/// </summary>
 public sealed class RunLog
 {
 	private readonly Lock _lock = new();
@@ -16,19 +12,10 @@ public sealed class RunLog
 		_runs = Sorted(runs);
 	}
 
-	/// <summary>
-	/// Raised after every change, on the thread that made it
-	/// </summary>
 	public event Action? Changed;
 
-	/// <summary>
-	/// The runs, newest first. A snapshot: it doesn't change once read.
-	/// </summary>
 	public IReadOnlyList<Run> Runs => Volatile.Read(ref _runs);
 
-	/// <summary>
-	/// The runs waiting to upload, in the order they upload: oldest first. Failed runs are set aside, so they aren't.
-	/// </summary>
 	public IReadOnlyList<Run> NotUploaded => Runs
 		.Where(run => run.Status == RunStatus.NotUploaded)
 		.OrderBy(run => run.DatePlayed)
@@ -41,36 +28,21 @@ public sealed class RunLog
 		Change(runs => runs.Any(existing => existing.Id == run.Id) ? runs : runs.Append(run));
 	}
 
-	/// <summary>
-	/// Replaces a run with <paramref name="change"/>'s copy of it. Nothing happens if it's gone.
-	/// </summary>
 	public void Update(Guid id, Func<Run, Run> change)
 	{
 		Change(runs => runs.Select(run => run.Id == id ? change(run) : run));
 	}
 
-	/// <summary>
-	/// Deletes a run that isn't uploaded. Uploaded runs are kept, since they're fixed on the site.
-	/// </summary>
-	/// <returns>Whether it was deleted</returns>
 	public bool Delete(Guid id)
 	{
 		return Remove(run => run.Id == id && run.Status != RunStatus.Uploaded) > 0;
 	}
 
-	/// <summary>
-	/// Deletes every uploaded run. The site still has them.
-	/// </summary>
-	/// <returns>How many were deleted</returns>
 	public int DeleteUploaded()
 	{
 		return Remove(run => run.Status == RunStatus.Uploaded);
 	}
 
-	/// <summary>
-	/// Deletes every run, uploaded or not
-	/// </summary>
-	/// <returns>How many were deleted</returns>
 	public int DeleteAll()
 	{
 		return Remove(_ => true);

@@ -1,10 +1,5 @@
 namespace MentorRouletteTracker.Core.Storage;
 
-/// <summary>
-/// Runs a save off the calling thread, so file writes never hold up the game's frame. Saves run one at a time, and
-/// requests made while one is running are folded into one more, so the last request is always followed by a save
-/// that sees everything up to it. The save reads what to write when it runs.
-/// </summary>
 public sealed class BackgroundSaver
 {
 	private readonly Action _save;
@@ -34,10 +29,6 @@ public sealed class BackgroundSaver
 		}
 	}
 
-	/// <summary>
-	/// Waits for every requested save to finish
-	/// </summary>
-	/// <returns>Whether the last save worked</returns>
 	public bool Flush()
 	{
 		while (true)

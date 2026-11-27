@@ -15,15 +15,8 @@ using MentorRouletteTracker.Core.Uploading;
 
 namespace MentorRouletteTracker;
 
-/// <summary>
-/// The plugin's runs, connection and uploads, as the windows and the run watcher use them. Network calls and file
-/// writes run off the framework thread; settings change on it.
-/// </summary>
 internal sealed class Tracker : IDisposable
 {
-	/// <summary>
-	/// The game's <c>UIColor</c> row for the chat line: a soft gold (#F3CC64, and a darker gold on light themes)
-	/// </summary>
 	private const ushort ChatColour = 31;
 
 	private const uint OpenRunsLinkId = 1;
@@ -38,16 +31,8 @@ internal sealed class Tracker : IDisposable
 	private readonly CancellationTokenSource _stopping = new();
 	private readonly DalamudLinkPayload _openRunsLink;
 
-	/// <summary>
-	/// Chat lines said on any thread, for the framework thread to print. One queue, rather than a framework call per
-	/// line, keeps them in the order they were said: the waiting runs' line is said before the outcome of a run that
-	/// ended in the same upload, so it comes first.
-	/// </summary>
 	private readonly ConcurrentQueue<Said> _toSay = new();
 
-	/// <summary>
-	/// Chat lines waiting for the player to log in, on the framework thread
-	/// </summary>
 	private readonly List<Said> _afterLogin = [];
 
 	public Tracker(
@@ -74,9 +59,6 @@ internal sealed class Tracker : IDisposable
 			() => files.SaveSettings(Config),
 			exception => _log.Error(exception, "Couldn't save the settings"));
 
-		// Only a dev build can point at another site. Dev builds keep their own settings, but one from 1.0.0 shared
-		// the installed plugin's, so the installed one goes back to the real site, dropping the token, which was for
-		// the other one. The site's former addresses are the same site, so those stay connected.
 		IsDev = pluginInterface.IsDev;
 		switch (ServerAddress.OnLoad(Config.ServerAddress, IsDev))
 		{
@@ -114,9 +96,6 @@ internal sealed class Tracker : IDisposable
 	public RunKeeper Keeper { get; }
 	public GameNames Names { get; }
 
-	/// <summary>
-	/// Loaded as a dev plugin (from Dev Plugin Locations), not installed from the plugin's repository
-	/// </summary>
 	public bool IsDev { get; }
 
 	public bool IsConnected => RunKeeper.ConnectionFor(Config) is not null;
@@ -137,18 +116,11 @@ internal sealed class Tracker : IDisposable
 		_configSaver.Request();
 	}
 
-	/// <summary>
-	/// Waits for the runs to be saved, off the framework thread
-	/// </summary>
-	/// <returns>Whether the last save worked</returns>
 	public bool RunsSaved()
 	{
 		return _runsSaver.Flush();
 	}
 
-	/// <summary>
-	/// A run that just ended, on the framework thread: kept now, then uploaded if auto-upload's on, then the chat line
-	/// </summary>
 	public void RunEnded(Run run)
 	{
 		var duty = Names.Duty(run.GameContentId);
@@ -164,10 +136,6 @@ internal sealed class Tracker : IDisposable
 		}
 	}
 
-	/// <summary>
-	/// The run that just ended's upload, or why it wasn't uploaded: the run's last step, at Information like the rest
-	/// of it
-	/// </summary>
 	private void LogOutcome(RunOutcome outcome)
 	{
 		switch (outcome.Kind)
@@ -193,19 +161,11 @@ internal sealed class Tracker : IDisposable
 		}
 	}
 
-	/// <summary>
-	/// A run was dropped because the plugin was off for part of it, on the framework thread: the chat line, which
-	/// doesn't open the runs window, since the run isn't there
-	/// </summary>
 	public void EndMissed(uint gameContentId)
 	{
 		Say(ChatLine.FormatEndMissed(Names.Duty(gameContentId)), afterLogin: false, opensRuns: false);
 	}
 
-	/// <summary>
-	/// Runs that were waiting were logged, on the thread that uploaded them: the chat line, once the player's logged in,
-	/// since the plugin starts at the title screen and uploads straight away
-	/// </summary>
 	private void OnWaitingRunsLogged(IReadOnlyList<LoggedRun> logged)
 	{
 		foreach (var run in logged)
@@ -216,11 +176,6 @@ internal sealed class Tracker : IDisposable
 		Say(ChatLine.FormatWaiting(logged), afterLogin: true);
 	}
 
-	/// <summary>
-	/// Prints a chat line, from any thread, after every line said before it
-	/// </summary>
-	/// <param name="afterLogin">Held until the player's logged in, if they aren't</param>
-	/// <param name="opensRuns">Clicking it opens the runs window</param>
 	private void Say(string line, bool afterLogin, bool opensRuns = true)
 	{
 		if (_stopping.IsCancellationRequested)
@@ -232,9 +187,6 @@ internal sealed class Tracker : IDisposable
 		Background(() => _framework.RunOnFrameworkThread(PrintSaid), "print a chat line");
 	}
 
-	/// <summary>
-	/// Prints every line said so far, in order, on the framework thread
-	/// </summary>
 	private void PrintSaid()
 	{
 		while (_toSay.TryDequeue(out var said))
@@ -268,9 +220,6 @@ internal sealed class Tracker : IDisposable
 		_afterLogin.Clear();
 	}
 
-	/// <summary>
-	/// The chat line (with its [MRT] tag) in gold, and clickable if it opens the runs window
-	/// </summary>
 	private SeString ChatMessage(Said said)
 	{
 		if (!said.OpensRuns)
@@ -285,9 +234,6 @@ internal sealed class Tracker : IDisposable
 			.Build();
 	}
 
-	/// <summary>
-	/// "Upload N runs": every run that isn't uploaded, oldest first
-	/// </summary>
 	public void UploadAll()
 	{
 		Background(() => Uploader.UploadAsync(_stopping.Token), "upload the runs");
@@ -303,26 +249,16 @@ internal sealed class Tracker : IDisposable
 		Background(() => Uploader.DeleteAsync(id, _stopping.Token), "delete a run");
 	}
 
-	/// <summary>
-	/// Deletes the uploaded runs from the plugin. The site keeps them.
-	/// </summary>
 	public void DeleteUploaded()
 	{
 		Background(() => Uploader.DeleteUploadedAsync(_stopping.Token), "delete the uploaded runs");
 	}
 
-	/// <summary>
-	/// Deletes every run from the plugin. Runs on the site stay there.
-	/// </summary>
 	public void DeleteAll()
 	{
 		Background(() => Uploader.DeleteAllAsync(_stopping.Token), "delete the runs");
 	}
 
-	/// <summary>
-	/// Checks a token with the site, and keeps it if the site accepts it
-	/// </summary>
-	/// <returns>The site's answer, on the framework thread with the settings already changed</returns>
 	public async Task<ApiResult<string>> ConnectAsync(string token)
 	{
 		var server = Config.ServerAddress;
@@ -348,9 +284,6 @@ internal sealed class Tracker : IDisposable
 		SaveConfig();
 	}
 
-	/// <summary>
-	/// Runs <paramref name="work"/> on the thread pool, so even the start of a request stays off the framework thread
-	/// </summary>
 	private void Background(Func<Task> work, string what)
 	{
 		Task.Run(work).ContinueWith(
@@ -360,10 +293,5 @@ internal sealed class Tracker : IDisposable
 			TaskScheduler.Default);
 	}
 
-	/// <summary>
-	/// A chat line waiting to be printed
-	/// </summary>
-	/// <param name="AfterLogin">Held until the player's logged in, if they aren't</param>
-	/// <param name="OpensRuns">Clicking it opens the runs window</param>
 	private sealed record Said(string Line, bool AfterLogin, bool OpensRuns);
 }

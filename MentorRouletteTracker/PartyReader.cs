@@ -11,15 +11,8 @@ using MentorRouletteTracker.Core.Recording;
 
 namespace MentorRouletteTracker;
 
-/// <summary>
-/// Reads the party from the game's memory as plain <see cref="PartySlot"/>s, for <see cref="PartyReading"/> to decide
-/// which count. On the framework thread only.
-/// </summary>
 internal sealed unsafe class PartyReader
 {
-	/// <summary>
-	/// <see cref="GamePartyMember.Flags"/>: set for an alliance slot that's in use
-	/// </summary>
 	private const byte AllianceSlotInUse = 0x01;
 
 	private readonly IClientState _clientState;
@@ -34,10 +27,6 @@ internal sealed unsafe class PartyReader
 		_objectTable = objectTable;
 	}
 
-	/// <summary>
-	/// The party as this frame shows it: the party's slots, the alliance's in an alliance raid, and the player. Whether
-	/// others are in combat can only be read while they're showing in the game.
-	/// </summary>
 	public Party Read()
 	{
 		_slots.Clear();

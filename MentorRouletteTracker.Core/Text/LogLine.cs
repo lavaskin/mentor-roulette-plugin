@@ -2,14 +2,8 @@ using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Core.Text;
 
-/// <summary>
-/// The recorder's notes as lines for the plugin's log: duties and jobs by name and id, times like the site's, and party
-/// members as counts only
-/// </summary>
 public static class LogLine
 {
-	/// <param name="duty">A duty's name, from its <c>ContentFinderCondition</c> id</param>
-	/// <param name="job">A job's name, from its <c>ClassJob</c> id</param>
 	public static string Format(RunNote note, Func<uint, string> duty, Func<uint, string> job)
 	{
 		string Duty(uint id) => $"{duty(id)} ({id})";

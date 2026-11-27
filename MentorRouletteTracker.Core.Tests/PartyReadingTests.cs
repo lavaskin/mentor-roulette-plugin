@@ -53,7 +53,6 @@ public class PartyReadingTests
 	[Fact]
 	public void AMemberInAnotherZone_IsLeftOut()
 	{
-		// Disconnected, or not in the duty: whatever HP their slot kept, they don't have to die for a wipe
 		var party = PartyReading.Read([Slot(Player), Slot(2, zone: Elsewhere), Slot(3, zone: 0)], Me);
 
 		Assert.Equal([Player], party.Members.Select(member => member.Id));
@@ -111,7 +110,6 @@ public class PartyReadingTests
 	[Fact]
 	public void ThePlayersSlotLaggingBehindThem_LeavesThemIn()
 	{
-		// Just after arriving, the party list can still have the player in the zone they left
 		var party = PartyReading.Read([Slot(Player, zone: Elsewhere), Slot(2, zone: Elsewhere)], Me);
 
 		Assert.Equal([Player], party.Members.Select(member => member.Id));

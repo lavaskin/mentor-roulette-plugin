@@ -81,9 +81,6 @@ public sealed class Plugin : IDalamudPlugin
 		_http.Dispose();
 	}
 
-	/// <summary>
-	/// Clicking the chat line: opens the runs window, or brings it to the front if it's open
-	/// </summary>
 	private void OpenRuns()
 	{
 		_runsWindow.IsOpen = true;

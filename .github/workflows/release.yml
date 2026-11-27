@@ -1,11 +1,5 @@
 name: Release
 
-# Releasing is merging: a push to main that brings a version (<Version> in MentorRouletteTracker.csproj) that isn't
-# released yet builds the plugin, makes a GitHub release with its zip and the version's changelog (which tags the
-# pushed commit vX.Y.Z), then points repo.json on main at it, which is what Dalamud installs from. A push whose
-# version is already released does nothing, unless repo.json doesn't point at it yet: then it finishes that release.
-# See docs/releasing.md.
-
 on:
   push:
     branches: [main]
@@ -13,8 +7,6 @@ on:
 permissions:
   contents: write
 
-# One at a time, so two can't both release a version or commit repo.json. The run started by the release's own
-# repo.json commit waits here, then finds nothing to do.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -30,17 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # The last step pushes repo.json to main, whose ruleset only deploy keys and admins can bypass:
-          # GITHUB_TOKEN can't, and GitHub Actions can't be a bypass actor on a personal repository.
-          # See docs/releasing.md.
           ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - name: Read the version
         id: version
         run: echo "version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' MentorRouletteTracker/MentorRouletteTracker.csproj)" >> "$GITHUB_OUTPUT"
 
-      # Whether vX.Y.Z is tagged yet, and its changelog section if not: shared with the other FFXIV repos. It reads
-      # the changelog before building, so a version bumped without its changelog section makes nothing.
       - name: Release plan
         id: release
         uses: lavaskin/ffxiv-workflows/release-plan@main
@@ -48,8 +35,6 @@ jobs:
           version: ${{ steps.version.outputs.version }}
           version-file: <Version> in MentorRouletteTracker.csproj
 
-      # release: not tagged yet. repo-json: released, but repo.json doesn't point at it yet (a release whose repo.json
-      # push failed). none: released, and repo.json points at it (a merge that didn't bump the version).
       - name: What to do
         id: plan
         env:
@@ -104,7 +89,6 @@ jobs:
           gh release create "$TAG" "$RUNNER_TEMP/MentorRouletteTracker.zip" \
             --target "$GITHUB_SHA" --title "$TAG" --notes-file "$NOTES"
 
-      # Finishing a release whose repo.json push failed: everything repo.json needs is in the release
       - name: Read the release
         if: steps.plan.outputs.action == 'repo-json'
         env:
@@ -118,7 +102,6 @@ jobs:
           unzip -p "$RUNNER_TEMP/MentorRouletteTracker.zip" MentorRouletteTracker.json > "$RUNNER_TEMP/manifest.json"
           gh release view "$TAG" --json body --jq .body > "$NOTES"
 
-      # Last, so Dalamud never offers a version whose zip isn't up yet
       - name: Update repo.json on main
         if: steps.plan.outputs.action != 'none'
         env:

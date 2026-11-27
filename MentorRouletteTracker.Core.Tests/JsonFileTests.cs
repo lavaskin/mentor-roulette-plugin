@@ -2,10 +2,6 @@ using MentorRouletteTracker.Core.Storage;
 
 namespace MentorRouletteTracker.Core.Tests;
 
-/// <summary>
-/// <see cref="JsonFile"/> with a class shaped like the plugin's settings (a dev build's <c>dev/settings.json</c>):
-/// settable properties with defaults, which the plugin's own settings class can't be here, since it's Dalamud's
-/// </summary>
 public sealed class JsonFileTests : IDisposable
 {
 	private readonly string _directory = Path.Combine(Path.GetTempPath(), "mrt-tests-" + Guid.NewGuid());

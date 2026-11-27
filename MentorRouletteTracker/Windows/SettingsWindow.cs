@@ -10,9 +10,6 @@ using MentorRouletteTracker.Core.Models;
 
 namespace MentorRouletteTracker.Windows;
 
-/// <summary>
-/// The plugin's settings (<c>/mrt config</c>)
-/// </summary>
 public sealed class SettingsWindow : Window
 {
 	private const int TokenLength = 200;
@@ -50,7 +47,6 @@ public sealed class SettingsWindow : Window
 		ImGui.Spacing();
 		DrawRunsKept();
 
-		// Only for trying the plugin against a dev copy of the site
 		ImGui.Spacing();
 		if (_tracker.IsDev && ImGui.CollapsingHeader("Advanced (dev builds only)"))
 		{
