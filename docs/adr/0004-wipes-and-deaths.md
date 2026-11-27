@@ -4,7 +4,7 @@ How `PartyWatcher` counts the party's deaths and says when it wipes, from what e
 
 ## The party is watched because the game's message isn't enough
 
-The game only sends its wipe message when it resets the whole party, which it does in trials and raids. In dungeons and guildhests each player returns to the start themselves and there's no message, so the party's HP and combat, read every frame, are all there is. Both are used, and the same wipe seen both ways counts once (below). The party watcher has no Dalamud types and is unit tested as timelines, one frame per change (`PartyWatcherTests`). It isn't thread safe.
+The game only sends its wipe message in trials and raids ([0002](0002-reading-the-game.md#the-games-wipe-message-only-comes-in-trials-and-raids)), so in dungeons and guildhests the party's HP and combat, read every frame, are all there is. Both are used, and the same wipe seen both ways counts once (below). The party watcher has no Dalamud types and is unit tested as timelines, one frame per change (`PartyWatcherTests`). It isn't thread safe.
 
 `MentorRouletteTracker.Core/Recording/PartyWatcher.cs`.
 
@@ -34,7 +34,7 @@ A fight starts on the first frame where any member who's alive is in combat, and
 
 ## Between fights, only those still dead carry into the next one
 
-Ending a fight doesn't forget its deaths straight away: at the start of each frame between fights (`ForgetDeathsOfTheLiving`), anyone still dead counts as having died in the next fight (`DiedThisFight`), and everyone alive starts it afresh. So the whole party lying dead at once is always a wipe, however many fights it took (three die and nobody raises them, then the last one pulls the next pack alone and dies), and deaths in a fight the party won don't count toward the next once those members are up. A member whose slot loads in dead mid-fight starts with `DiedThisFight` set too, so if they return to the start, they count toward a wipe as having died this fight; only the wipe's trigger, a death seen, can't come from first sightings.
+Ending a fight doesn't forget its deaths straight away: on each frame between fights, once that frame's members have been seen (`ForgetDeathsOfTheLiving`, before the check for a new fight), anyone still dead counts as having died in the next fight (`DiedThisFight`), and everyone alive starts it afresh. So the whole party lying dead at once is always a wipe, however many fights it took (three die and nobody raises them, then the last one pulls the next pack alone and dies), and deaths in a fight the party won don't count toward the next once those members are up. A member whose slot loads in dead mid-fight starts with `DiedThisFight` set too, so if they return to the start, they count toward a wipe as having died this fight; only the wipe's trigger, a death seen, can't come from first sightings.
 
 `MentorRouletteTracker.Core/Recording/PartyWatcher.cs` (`ForgetDeathsOfTheLiving`, `Member.DiedThisFight`).
 
@@ -57,12 +57,12 @@ Ending a fight doesn't forget its deaths straight away: at the start of each fra
 
 `PartyReading.Read` turns the game's party and alliance slots, and the player, into the `Party` the watcher sees (`PartyReader` reads them from the game: [0002](0002-reading-the-game.md#the-party-in-memory)).
 
-- **A slot counts if it's loaded** (max HP above 0) **and in the player's zone.** Anyone else is left out (and counted as `NotHere`, for the log), so they don't have to die for a wipe. A disconnected member keeps their slot, with whatever HP they had, so without the zone check they'd hold up every wipe for the rest of the run.
-- **Empty slots** (id 0 or `0xE0000000`) are skipped, and aren't counted as not here.
-- **The player is always in it, read from themselves** rather than their slot, which can lag behind them (its zone, say, just after arriving), so on their own the party is just them. A player who hasn't loaded (max HP 0, or no id) is read from their slot instead, if they have one. The player is always in their own party.
+- **A slot counts if it's loaded** (max HP above 0) **and in the player's zone.** Anyone else is left out (and counted as `NotHere`, for the log), so they don't have to die for a wipe. A disconnected member keeps their slot, so without the zone check they'd hold up every wipe for the rest of the run.
+- **Empty slots** are skipped, and aren't counted as not here.
+- **The player is read from themselves** rather than their slot, which can lag behind them ([0002](0002-reading-the-game.md#the-party-in-memory)), so on their own the party is just them. A player who hasn't loaded (max HP 0, or no id) is read from their slot instead, if they have one, and otherwise isn't in it.
 - **The same id in two slots** is one member, the first kept.
 - **A dead member is never in combat,** whatever the game says.
-- **Others' combat is only known while they're showing in the game.** Anyone too far away reads as out of combat, so if the player has died and returned to the start while the rest of the party fights out of sight, the fight looks over, its deaths are forgotten, and the others dying later isn't a wipe. That's a known miss, left alone: players are told about it in [runs.md](../runs.md#wipes), and they can fix the count on the site. `PartyWatcherTests.TheKnownMiss_BackAtTheStart_WithTheFightTooFarAwayToShow` pins it, so a fix changes that test on purpose.
+- **Others' combat is only known while they're showing in the game** ([0002](0002-reading-the-game.md#the-party-in-memory)), so if the player has died and returned to the start while the rest of the party fights out of sight, the fight looks over, its deaths are forgotten, and the others dying later isn't a wipe. That's a known miss, left alone: players are told about it in [runs.md](../runs.md#wipes), and they can fix the count on the site. `PartyWatcherTests.TheKnownMiss_BackAtTheStart_WithTheFightTooFarAwayToShow` pins it, so a fix changes that test on purpose.
 
 `MentorRouletteTracker.Core/Recording/PartyReading.cs`, `MentorRouletteTracker.Core/Models/Party.cs`, `MentorRouletteTracker.Core/Models/PartySlot.cs`, `MentorRouletteTracker.Core/Models/PartyMember.cs`.
 

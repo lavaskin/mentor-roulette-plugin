@@ -4,10 +4,10 @@ How runs get to the site, and the contract with the site's API. What a player se
 
 ## Uploads go oldest first, always
 
-The site numbers runs in the order they arrive, and can't reorder them, so `Uploader` uploads the runs that aren't uploaded oldest first (by date played), always. There's no per-run Upload button, only "Upload N runs", and auto-upload sends any older runs that are waiting before the one that just ended. Runs uploaded late come after anything logged since, with their real dates.
+The site numbers runs in the order they arrive, and can't reorder them, so `Uploader` uploads the runs that aren't uploaded oldest first (by date played), always. There's no per-run Upload button, only "Upload N runs", and auto-upload sends any older runs that are waiting before the one that just ended.
 
 - **The site can't be reached, or can't answer:** the run stays waiting, and holds up the runs after it, so they still go in order. `Problem` says why until a run goes.
-- **A 401:** uploading stops, and `NeedsReconnect` says to reconnect, which pauses auto-upload until the player connects again. Nothing is marked failed, since the runs aren't at fault.
+- **A 401:** uploading stops, and `NeedsReconnect` says to reconnect, which pauses auto-upload until the player connects again, or a later upload gets an answer (logged or refused). Nothing is marked failed, since the runs aren't at fault.
 - **A 400:** see below.
 
 A retry is always safe: each run has a plugin run id (`Run.Id`, made when it's recorded), and the site returns a run it already has with that id instead of logging it twice. So a run is retried until the site answers.
@@ -51,7 +51,7 @@ The plugin uses only the site's two plugin endpoints, which take a plugin token 
 - **`GET /api/plugin/me`** → `{ "username" }`: whose account the token is for. Connecting checks the token with it, and keeps the token only if the site accepts it.
 - **`POST /api/plugin/runs`** logs a run, and returns `{ "mentorRouletteLogId", "runNumber" }` and what it found. Sending one that's already logged (by its `pluginRunId`) returns it again.
 
-A run is sent as its plugin run id, the duty and job as the game's row ids (`gameContentId`, `gameClassJobId`: [0002](0002-reading-the-game.md#duties-and-jobs-are-the-games-row-ids)), whether it was cleared (`completed`) and a replacement, its wipes and deaths (null when not counted), its time in whole seconds, and when the player entered the duty as `datePlayed`, in UTC. Nothing else: never the character's name, or anything that identifies another player (`AGENTS.md`, Privacy).
+A run is sent as its plugin run id, the duty and job as the game's row ids (`gameContentId`, `gameClassJobId`: [0002](0002-reading-the-game.md#duties-and-jobs-are-the-games-row-ids)), whether it was cleared (`completed`) and a replacement, its wipes and deaths (null when not counted), its time in whole seconds, and when the player entered the duty as `datePlayed`, in UTC. Nothing else (`AGENTS.md`, Privacy).
 
 `MentorRouletteTracker.Core/Api/IMentorApi.cs`, `MentorRouletteTracker.Core/Api/MentorApiClient.cs` (`RunRequest`, `RunResponse`).
 
@@ -69,7 +69,7 @@ All of them are optional, since older versions of the site don't send them. A ve
 
 - **Unauthorized** is a 401: the token is missing, unknown or revoked, or its account is disabled.
 - **Refused** is a 400, with the site's own message: `{ "error": "…" }`, or the first message of a validation problem's `errors`. Never the problem's `title`, which is HTTP's words ("Bad Request"). Anything else is "The site refused it."
-- **Unavailable** is everything else, which is tried again later: the site couldn't be reached, took longer than the client's timeout (`MentorApiClient.Timeout`, 20 seconds), answered with any other failing status (a 5xx, and also a 403, 404 or 429), or answered with a body it couldn't read. A 502 or 504 comes from the proxy in front of the site when the site itself is down, so it's said like a network failure ("Couldn't reach the site.").
+- **Unavailable** is everything else, which is tried again later: the site couldn't be reached, took longer than the client's timeout (`MentorApiClient.Timeout`, 20 seconds), answered with any other failing status (a 5xx, and also a 403, 404 or 429), or answered with a body it couldn't read, or none. A saved address that isn't a web address is Unavailable too. A 502 or 504 comes from the proxy in front of the site when the site itself is down, so it's said like a network failure ("Couldn't reach the site.").
 
 The messages are shown to players, so they never give status codes. Treating every unexpected answer as Unavailable means a run is never failed by a fault that isn't its own; the cost is that a run the site will never take for some reason other than a 400 waits, and holds up the runs after it, until that's fixed.
 
@@ -79,7 +79,7 @@ The plugin's `HttpClient` comes from `CreateHttpClient`, with that timeout and `
 
 ## The server address, and the site's former one
 
-The site is `https://mentorroulette.com` (`ServerAddress.Default`). Only a dev build can point at another one (to a dev copy of the site: [development.md](../development.md)). A saved address is an http or https address, kept without a trailing slash, query or fragment (`Normalize`). A run's page on the site is `roulettes?run=<site run id>`.
+The site is `https://mentorroulette.com` (`ServerAddress.Default`). Only a dev build can point at another one (to a dev copy of the site: [development.md](../development.md)). A saved address must be http or https with no query or fragment, and is kept without a trailing slash (`Normalize`, which gives null for anything else, so the settings refuse it). A run's page on the site is `roulettes?run=<site run id>`.
 
 When the plugin loads (`OnLoad`):
 
@@ -91,6 +91,6 @@ When the plugin loads (`OnLoad`):
 
 ## Nothing waits on the network on the game's frame
 
-Network calls run on the thread pool, started through `Tracker.Background` with `Task.Run`, so even the start of a request (an async method's synchronous part, up to its first `await`) stays off the framework thread. A fault is logged ("Couldn't …"). A run that just ended is kept on the framework thread (`Tracker.RunEnded`), then uploaded in the background, and its chat line said once the upload's outcome is known. Connecting checks the token in the background, and changes the settings on the framework thread.
+Network calls run on the thread pool through `Task.Run`, so even the start of a request (an async method's synchronous part, up to its first `await`) stays off the framework thread. Most go through `Tracker.Background`, which logs a fault ("Couldn't …"). A run that just ended is kept on the framework thread (`Tracker.RunEnded`), then uploaded in the background, and its chat line said once the upload's outcome is known. Connecting checks the token with its own `Task.Run`, so the settings window can show a fault ("Couldn't connect."), and changes the settings on the framework thread.
 
 `MentorRouletteTracker/Tracker.cs` (`Background`, `RunEnded`, `ConnectAsync`).

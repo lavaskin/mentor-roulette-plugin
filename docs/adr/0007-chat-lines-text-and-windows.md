@@ -42,7 +42,7 @@ Every chat line is in the game's `UIColor` row 31 (`ChatColour`): a soft gold, #
 
 ## Chat lines are said in order, on the framework thread
 
-Chat lines are said on any thread (an upload's, mostly), and printed on the framework thread. They go through one queue (`_toSay`), drained in order by the framework thread (`PrintSaid`), rather than a framework call per line, so they print in the order they were said. That matters because the waiting runs' line is said before the outcome of a run that ended in the same upload ([0006](0006-uploading-and-the-sites-api.md#a-run-that-just-ended-is-told-about-once-whoever-uploads-it)), so it comes first.
+Chat lines are said on any thread (an upload's, mostly), and printed on the framework thread. They go through one queue (`_toSay`), drained in order on the framework thread (`PrintSaid`): each line's framework call prints whatever's queued rather than its own line, so they print in the order they were said. That matters because the waiting runs' line is said before the outcome of a run that ended in the same upload ([0006](0006-uploading-and-the-sites-api.md#a-run-that-just-ended-is-told-about-once-whoever-uploads-it)), so it comes first.
 
 The waiting runs' line is held until the player's logged in (`_afterLogin`, touched on the framework thread only, printed on `IClientState.Login`), since the plugin starts at the title screen and uploads straight away, and Dalamud's `ChatGui.Print` doesn't wait for login: a line printed then would be lost.
 

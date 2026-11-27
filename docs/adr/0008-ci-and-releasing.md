@@ -4,7 +4,7 @@ The CI, Release and Link ticket workflows, and `repo.json`. How to release, and 
 
 ## CI runs on pull requests and on pushes to `main`
 
-CI runs on every pull request into `main` or `dev`, and on pushes to `main`, to catch anything pushed straight to the branch releases are made from. A new push to a pull request cancels its older run; runs on `main` all finish.
+CI runs on every pull request into `main` or `dev`, on pushes to `main`, to catch anything pushed straight to the branch releases are made from, and by hand (`workflow_dispatch`). A new push to a pull request cancels its older run; runs on `main` all finish.
 
 `.github/workflows/ci.yml` (`on`, `concurrency`).
 
@@ -25,21 +25,29 @@ The Release build runs even when the tests fail (`!cancelled()`, as long as Rest
 ## A release goes one run at a time, and `repo.json` last
 
 - **One run at a time** (`concurrency: release`, `cancel-in-progress: false`), so two pushes can't both release a version or both commit `repo.json`. The run started by the release's own `repo.json` commit waits for it, then finds the version released and `repo.json` pointing at it, so does nothing.
-- **Whether to release comes from `release-plan`,** shared with the other FFXIV repos in `lavaskin/ffxiv-workflows`. It reads the changelog before anything is built, so a version bumped without its changelog section releases nothing. The workflow then decides between three: `release` (not tagged yet), `repo-json` (released, but `repo.json` doesn't point at it, because that release's push failed) and `none` (released, and `repo.json` points at it: a merge that didn't bump the version). `repo.json` points at a release when a `DownloadLinkInstall` holds `/releases/download/<tag>/`.
+- **Whether to release comes from `release-plan`,** shared with the other FFXIV repos in `lavaskin/ffxiv-workflows`, before anything is built. The three outcomes (`release`, `repo-json` and `none`) are in [releasing.md](../releasing.md). `repo.json` points at a release when a `DownloadLinkInstall` holds `/releases/download/<tag>/`.
 - **Finishing a release whose `repo.json` push failed** needs no build: the release's zip holds the manifest, and its body is the notes.
 - **`repo.json` is updated last,** after the release and its zip are up, so Dalamud never offers a version it can't download.
-- **The push to `main` uses a deploy key** (`ssh-key` on `actions/checkout`), since `main`'s ruleset blocks `GITHUB_TOKEN` and GitHub Actions can't be on a personal repository's bypass list ([releasing.md](../releasing.md#the-deploy-key)).
+- **The push to `main` uses a deploy key** (`ssh-key` on `actions/checkout`): why, and setting it up, are in [releasing.md](../releasing.md#the-deploy-key).
 
 `.github/workflows/release.yml`.
 
 ## `repo.json` is the packaged manifest plus where to download it
 
-`.github/scripts/repo-json.sh <manifest> <tag> <changelog file> <repository>` prints `repo.json` for one release: the manifest DalamudPackager wrote (`bin/x64/Release/MentorRouletteTracker/MentorRouletteTracker.json`), which already has the icon and the feedback setting from the `.csproj`, plus the release zip's address for install, update and testing, the version's changelog and the time. It can be run locally.
+`.github/scripts/repo-json.sh <manifest> <tag> <changelog file> <repository>` prints `repo.json` for one release: the manifest DalamudPackager wrote (`MentorRouletteTracker/bin/x64/Release/MentorRouletteTracker/MentorRouletteTracker.json`), which already has the icon and the feedback setting from the `.csproj`, plus the release zip's address for install, update and testing, the version's changelog, the time, and `IsHide` and `IsTestingExclusive` set to false.
 
 `.github/scripts/repo-json.sh`.
 
+## The icon and feedback setting are in the `.csproj`, not only `repo.json`
+
+An installed plugin's icon and feedback button come from the manifest in its own folder, which DalamudPackager writes from the `.csproj` (`IconUrl`, `AcceptsFeedback`), not from `repo.json`. Feedback is off, since the installer's feedback form goes to Dalamud's team rather than to a custom repository's author.
+
+A dev plugin doesn't use `IconUrl`: Dalamud shows `images/icon.png` from beside its DLL, so the `.csproj` copies `images/icon.png` into the build output.
+
+`MentorRouletteTracker/MentorRouletteTracker.csproj` (`IconUrl`, `AcceptsFeedback`, the `images\icon.png` item).
+
 ## Link ticket links each pull request into `dev` to its ticket
 
-It calls the Link ticket workflow in `lavaskin/ffxiv-workflows` at `@main`, which links a pull request to its ticket in `lavaskin/ffxiv-hub` from the branch name (`feature/<n>-<desc>`). The triggers it needs are in that repo's README: `synchronize`, because workflows don't run while a pull request has a merge conflict, so one opened with a conflict is linked by the push that fixes it, and `edited`, which catches a base changed to `dev`.
+It calls the Link ticket workflow in `lavaskin/ffxiv-workflows` at `@main`, which links a pull request to its ticket in `lavaskin/ffxiv-hub` from the branch name (`feature/<n>-<desc>`). The triggers it needs (`synchronize` and `edited` as well as `opened` and `reopened`), and why, are in [that repo's README](https://github.com/lavaskin/ffxiv-workflows#link-ticket).
 
 `.github/workflows/link-ticket.yml`.

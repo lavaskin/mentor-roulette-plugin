@@ -4,7 +4,7 @@ How `RunRecorder` turns what happens in the game into finished runs. The player-
 
 ## The recorder is a state machine of plain events, on one thread
 
-`RunRecorder` takes the game's events as plain calls with their times (`Popped`, `Arrived`, `LoadedIn`, `Commenced`, `JobKnown`, `PartySeen`, `GameWiped`, `Completed`, `LoggedOut`), and each returns the run it finished, if any. It has no Dalamud types, so every rule here is unit tested (`RunRecorderTests`). It isn't thread safe: the plugin calls it from the framework thread only ([0002](0002-reading-the-game.md#everything-happens-on-the-framework-thread)).
+`RunRecorder` takes the game's events as plain calls with their times (`Popped`, `Arrived`, `LoadedIn`, `Commenced`, `JobKnown`, `PartySeen`, `GameWiped`, `Completed`, `LoggedOut`). `Arrived` and `Completed` return the run they finished, if any, and `LoadedIn`, `Commenced` and `PartySeen` return whether anything changed, so the plugin knows to save. It has no Dalamud types, so every rule here is unit tested (`RunRecorderTests`). It isn't thread safe: the plugin calls it from the framework thread only ([0002](0002-reading-the-game.md#everything-happens-on-the-framework-thread)).
 
 Everything it sees and decides comes out of `Noted` as a `RunNote`, for the log ([0007](0007-chat-lines-text-and-windows.md#the-log-says-every-step-of-a-run-and-no-one-by-name)).
 
@@ -13,7 +13,7 @@ Everything it sees and decides comes out of `Noted` as a `RunNote`, for the log 
 ## A run starts on arriving in a duty from a Mentor Roulette pop
 
 - **A pop is remembered until the next arrival,** which uses it up. Only a Mentor Roulette pop is remembered, and any other pop replaces it, so a Mentor Roulette declined, then a duty queued directly and popped, records nothing (`Popped`).
-- **The arrival starts a run** if there's a pop, the zone is a duty (its `ContentFinderCondition` isn't 0), the duty finder put the player there (`throughDutyFinder`), and the pop is no older than `PopLifetime` (5 minutes: the game gives 45 seconds to answer a pop, then the party loads in, so an older pop was withdrawn, declined or left to expire). The duty finder check rules out a duty entered any other way just after a pop that was declined.
+- **The arrival starts a run** if there's a pop, the zone is a duty (its `ContentFinderCondition` isn't 0), the duty finder put the player there (`throughDutyFinder`), and the pop is no older than `PopLifetime`. Why each check is there is in 0002: [the duty finder](0002-reading-the-game.md#the-duty-finders-queue-state-says-how-the-player-got-somewhere) and [the pop's age](0002-reading-the-game.md#a-pop-is-answered-within-45-seconds).
 - **A replacement** is a pop for a duty in progress. Their clock starts on loading in, rather than at "Duty commenced", which they never see.
 
 `MentorRouletteTracker.Core/Recording/RunRecorder.cs` (`Popped`, `Arrived`, `PopLifetime`).
@@ -55,7 +55,7 @@ A run the player disconnected or crashed out of on the loading screen in, and di
 
 ## A crash carries the run on, or ends it as not cleared
 
-The run in progress is saved on every change and every minute ([0005](0005-saving.md#the-run-in-progress-is-saved-so-a-crash-loses-at-most-a-minute)). When the plugin starts with one saved, `Restore` carries it on, treating the player as logged out since it was last seen (`LastSeenAt`), so the time in between doesn't count. Arriving back in its duty carries it on once they've loaded in; arriving anywhere else ends it as not cleared, at `LastSeenAt` rather than the arrival. The game closing (and `/xlunload`) counts as a crash.
+The run in progress is saved on every change, and every minute while the player's in the duty ([0005](0005-saving.md#the-run-in-progress-is-saved-so-a-crash-loses-at-most-a-minute)). When the plugin starts with one saved, `Restore` carries it on, treating the player as logged out since it was last seen (`LastSeenAt`), so the time in between doesn't count. Arriving back in its duty carries it on once they've loaded in; arriving anywhere else ends it as not cleared, at `LastSeenAt` rather than the arrival. The game closing (and `/xlunload`) counts as a crash.
 
 A run saved before "Duty commenced" (the plugin was reloaded while the party loaded in) still waits for it once it's back (`AwaitingDutyCommenced`), so the wait doesn't count, as it wouldn't have without the reload.
 

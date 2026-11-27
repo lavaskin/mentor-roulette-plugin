@@ -36,7 +36,7 @@ Fields added since the first version are optional, so the files older versions w
 - **`InProgressRun.EnteredAt`** is null in a run in progress saved by a version that didn't keep it, which is dated at its end minus its time.
 - **`InProgressRun.AwaitingDutyCommenced`, `PluginTurnedOff` and `ClockRanWhileOff`** are false when missing.
 
-So these aren't `required`, unlike the other fields: making one `required` would stop the older files reading.
+So these aren't `required`, unlike the fields every version has written: making one `required` would stop the older files reading.
 
 `MentorRouletteTracker.Core/Models/Run.cs`, `MentorRouletteTracker.Core/Models/InProgressRun.cs`.
 
@@ -73,12 +73,12 @@ When a run ends, `RunWatcher.Finished` hands it on first (`runEnded`: `Tracker` 
 
 ## The settings are one connection for every character
 
-`Configuration` is the plugin's settings, which Dalamud keeps in its plugin config file. One connection covers every character on the install: the token isn't per character, and the character's name is never stored. `Token` is the plugin token from the site's Account page, null when not connected, and `Username` is whose account it's for, as the site said when it connected (it isn't refreshed). Core reads them through `IUploadSettings`, so it needs no Dalamud reference. Settings change on the framework thread only, and are saved through a `BackgroundSaver` like the runs.
+`Configuration` is the plugin's settings, which Dalamud keeps in its plugin config file. One connection covers every character on the install: the token isn't per character, and the character's name is never stored. `Token` is the plugin token from the site's Account page, null when not connected, and `Username` is whose account it's for, as the site said when it connected (it isn't refreshed). Core reads the server address, the token and auto-upload through `IUploadSettings`, so it needs no Dalamud reference. Settings change on the framework thread only, and are saved through a `BackgroundSaver` like the runs.
 
 `MentorRouletteTracker/Configuration.cs`, `MentorRouletteTracker.Core/Uploading/IUploadSettings.cs`, `MentorRouletteTracker/Tracker.cs` (`SaveConfig`, `ConnectAsync`).
 
 ## A dev build keeps its own files
 
-Dalamud gives a dev build the same config file and directory as the installed plugin ([0002](0002-reading-the-game.md#a-dev-build-shares-the-installed-plugins-config)), and both are tried on one install. So a dev build (`IsDev`) keeps its settings in the config directory's `dev` folder as `settings.json` (through `JsonFile`, not Dalamud's config), beside its own `runs.json` and `run-in-progress.json`. Trying a build then never touches the installed plugin's runs, and each keeps its own server and token. A separate internal name for dev builds would have let both load at once, with two `/mrt`s and every run recorded twice.
+Dalamud gives a dev build the same config file and directory as the installed plugin ([0002](0002-reading-the-game.md#a-dev-build-shares-the-installed-plugins-config)), and both are tried on one install. So a dev build (`IsDev`) keeps its settings in the config directory's `dev` folder as `settings.json` (through `JsonFile`, not Dalamud's config), beside its own `runs.json` and `run-in-progress.json` ([development.md](../development.md#trying-a-build-in-the-game) has what that means for trying one). A separate internal name for dev builds would have let both load at once, with two `/mrt`s and every run recorded twice.
 
 `MentorRouletteTracker/PluginFiles.cs`.

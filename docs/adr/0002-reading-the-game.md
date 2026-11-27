@@ -1,6 +1,6 @@
 # 0002: Reading the game
 
-How Dalamud and the game behave, as far as the plugin relies on it. None of this shows in the code, and most of it was found by reading Dalamud's source and watching real runs, so code that looks like it could be simpler usually works around one of these. The plugin project (`MentorRouletteTracker`) is the only part that reads the game: it turns what it reads into plain events and values for `Core`, which decides what they mean ([0003](0003-recording-runs.md), [0004](0004-wipes-and-deaths.md)).
+How Dalamud and the game behave, as far as the plugin relies on it. None of this shows in the code, so code that looks like it could be simpler usually works around one of these. The plugin project (`MentorRouletteTracker`) is the only part that reads the game: it turns what it reads into plain events and values for `Core`, which decides what they mean ([0003](0003-recording-runs.md), [0004](0004-wipes-and-deaths.md)).
 
 ## Everything happens on the framework thread
 
@@ -54,7 +54,7 @@ The game gives a player 45 seconds to answer a pop, then the party loads in. So 
 
 ## The game's wipe message only comes in trials and raids
 
-`IDutyState.DutyWiped` is the director update `0x4000_0005`, the fade-out that resets the whole party. Trials and raids send it; dungeons and guildhests don't, since each player returns to the start themselves. So wipes are also counted from the party ([0004](0004-wipes-and-deaths.md)). The message can come before the last death shows in the party, and it can come with no deaths at all, when the duty fails some other way (an escort dying). After it, the game raises everyone at the start, out of combat.
+`IDutyState.DutyWiped` is the director update `0x4000_0005`, the fade-out that resets the whole party. Trials and raids send it; dungeons and guildhests don't, since each player returns to the start themselves. So wipes are also counted from the party, and how the two are matched up is in [0004](0004-wipes-and-deaths.md#the-games-message-and-a-wipe-from-the-party-within-30-seconds-are-the-same-wipe).
 
 `DutyCompleted` fires once per territory, from the flytext or the completion packet.
 
@@ -67,7 +67,7 @@ The game gives a player 45 seconds to answer a pop, then the party loads in. So 
 - **Slots:** the main party's (`GroupManager.MainGroup`, up to `MemberCount`), then in an alliance raid (`MainGroup.IsAlliance`) the alliance's other parties' (`AllianceMembers`), only where FFXIVClientStructs' `PartyMember.Flags` has bit `0x01` set (`AllianceSlotInUse`), the game's mark for an alliance slot in use. Then the player, read from themselves.
 - **Empty slots** have an `EntityId` of 0 or `0xE0000000` (the game's id for no one). A slot whose `MaxHp` is 0 hasn't loaded.
 - **A disconnected member keeps their slot,** with whatever HP they had, and stays in the party list. Only their zone (`TerritoryType`) tells them apart.
-- **The player's own slot can lag behind them,** still showing the zone they left just after arriving. So the player is read from their own character (`IClientState.TerritoryType`, `ConditionFlag.InCombat`).
+- **The player's own slot can lag behind them,** still showing the zone they left just after arriving. So the player is read from their own character (`IObjectTable.LocalPlayer` for their id and HP, `IClientState.TerritoryType`, `ConditionFlag.InCombat`).
 - **Whether others are in combat can only be read while they're showing in the game:** it comes from their character in the object table (`IObjectTable.SearchByEntityId`, `StatusFlags.InCombat`), which only has characters close enough to show. Anyone further away reads as out of combat. That's the known miss in [runs.md](../runs.md#wipes).
 - **A member is told apart by their `EntityId`,** the game's object id, which is kept in memory only, and never logged, saved or sent (`AGENTS.md`, Privacy).
 
