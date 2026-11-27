@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Counts the party's deaths in each run, alliance raids included, and uploads them with the run. A Deaths column in the runs window.
+
 ### Fixed
 
 - Wipes in dungeons and guildhests are counted now.

@@ -8,7 +8,7 @@
     <Author>lavaskin</Author>
     <Name>Mentor Roulette Tracker</Name>
     <Punchline>Logs your Mentor Roulette runs to Mentor Roulette Tracker.</Punchline>
-    <Description>Keeps track of your Mentor Roulette runs and logs them to your account on Mentor Roulette Tracker (mentorroulette.com).</Description>
+    <Description>Keeps track of your Mentor Roulette runs, with their wipes, the party's deaths and your time, and logs them to your account on Mentor Roulette Tracker (mentorroulette.com).</Description>
     <RepoUrl>https://github.com/lavaskin/mentor-roulette-plugin</RepoUrl>
     <Tags>mentor;roulette;duty;tracker;stats</Tags>
     <!-- An installed plugin's icon and feedback button come from this manifest in its folder, not from repo.json.
