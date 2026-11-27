@@ -8,6 +8,12 @@
 - If the game crashes and you don't get back in, the run is recorded as not cleared the next time you log in.
 - If you turn the plugin off during a run (or it's reloaded or updated), it can't know how the run ended, so the run is logged only if the plugin's back on in time to see you clear it. Otherwise it isn't logged, and a chat line says so: you can log it on the site. If it's back on before you leave, the time it was off still counts, but any wipes then are missed.
 
+## Wipes
+
+A wipe is everyone in the party dying in the same fight (all 24 players in an alliance raid), or the game resetting the whole party, which it does in trials and raids. They don't have to die at the same moment: someone who dies early and returns to the start still counts, as long as the rest die too. A fight starts when anyone alive is in combat, and ends once nobody alive is. Anyone still lying dead when the next fight starts counts as having died in it, so the whole party dead at once is always a wipe. Someone raised who's back in combat is still fighting, and three dying while the fourth finishes the fight isn't a wipe. A member who's disconnected or not in the duty doesn't have to die.
+
+The plugin can only see whether others are in combat while they're close enough to show in the game. So if you've returned to the start and the rest of the party is fighting too far away to show, the fight can look over before they die, and that wipe is missed. Wipes while the plugin is off are missed too. You can fix the count on the site.
+
 ## Your time
 
 Your time is your own time in the duty, to the duty-complete message, or to leaving if it wasn't cleared. It starts at "Duty commenced", so a cleared run's time matches the game's completion time. As a replacement, it starts once you've loaded in. Loading screens, and time disconnected, don't count.

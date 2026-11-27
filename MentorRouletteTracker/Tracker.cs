@@ -102,6 +102,7 @@ internal sealed class Tracker : IDisposable
 
 		Uploader = new Uploader(Log, api, () => RunKeeper.ConnectionFor(Config));
 		Keeper = new RunKeeper(Log, Uploader, Config);
+		Uploader.Logged += OnUploaded;
 		Keeper.WaitingRunsLogged += OnWaitingRunsLogged;
 		_clientState.Login += OnLogin;
 
@@ -125,6 +126,7 @@ internal sealed class Tracker : IDisposable
 	{
 		_stopping.Cancel();
 		_clientState.Login -= OnLogin;
+		Uploader.Logged -= OnUploaded;
 		Keeper.WaitingRunsLogged -= OnWaitingRunsLogged;
 		_chat.RemoveChatLinkHandler();
 		Log.Changed -= _runsSaver.Request;
@@ -158,7 +160,45 @@ internal sealed class Tracker : IDisposable
 
 		async Task SayAsync()
 		{
-			Say(ChatLine.Format(run, duty, await outcome, Config.ChatLinePace), afterLogin: false);
+			var ended = await outcome;
+			LogOutcome(ended);
+			Say(ChatLine.Format(run, duty, ended, Config.ChatLinePace), afterLogin: false);
+		}
+	}
+
+	/// <summary>
+	/// Each run the site logged, by any upload, on the thread that uploaded it
+	/// </summary>
+	private void OnUploaded(IReadOnlyList<(Guid RunId, LoggedRun Logged)> logged)
+	{
+		foreach (var (_, run) in logged)
+		{
+			_log.Information("Uploaded run as #{RunNumber}", run.RunNumber);
+		}
+	}
+
+	/// <summary>
+	/// Why the run that just ended wasn't uploaded, if it wasn't. Uploaded runs are logged as they upload.
+	/// </summary>
+	private void LogOutcome(RunOutcome outcome)
+	{
+		switch (outcome.Kind)
+		{
+			case RunOutcomeKind.Refused:
+				_log.Warning("The site refused the run: {Reason}", outcome.Reason ?? "no reason given");
+				break;
+			case RunOutcomeKind.NeedsReconnect:
+				_log.Warning("The site no longer accepts the plugin's connection, so uploads are paused until it's connected again");
+				break;
+			case RunOutcomeKind.Waiting:
+				_log.Warning("Couldn't upload the run, so it'll be tried again later: {Problem}", Uploader.Problem ?? "the site couldn't be reached");
+				break;
+			case RunOutcomeKind.NotConnected:
+				_log.Information("Not uploaded: the plugin isn't connected to the site");
+				break;
+			case RunOutcomeKind.AutoUploadOff:
+				_log.Information("Not uploaded: auto-upload is off");
+				break;
 		}
 	}
 

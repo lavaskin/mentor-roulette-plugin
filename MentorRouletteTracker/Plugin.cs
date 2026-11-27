@@ -21,6 +21,7 @@ public sealed class Plugin : IDalamudPlugin
 	[PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
 	[PluginService] internal static IFramework Framework { get; private set; } = null!;
 	[PluginService] internal static ICondition Condition { get; private set; } = null!;
+	[PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
 	[PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
 	[PluginService] internal static IDataManager DataManager { get; private set; } = null!;
 	[PluginService] internal static IPluginLog Log { get; private set; } = null!;
@@ -38,17 +39,18 @@ public sealed class Plugin : IDalamudPlugin
 		_http = MentorApiClient.CreateHttpClient(version);
 
 		var files = new PluginFiles(PluginInterface, warning => Log.Warning(warning));
+		var names = new GameNames(DataManager);
 		_tracker = new Tracker(
 			PluginInterface,
 			Framework,
 			ClientState,
 			ChatGui,
 			Log,
-			new GameNames(DataManager),
+			names,
 			files,
 			new MentorApiClient(_http),
 			OpenRuns);
-		_watcher = new RunWatcher(ClientState, DutyState, PlayerState, Framework, Condition, Log, files.Runs, _tracker.RunEnded, _tracker.RunsSaved, _tracker.EndMissed);
+		_watcher = new RunWatcher(ClientState, DutyState, PlayerState, Framework, Condition, ObjectTable, Log, names, files.Runs, _tracker.RunEnded, _tracker.RunsSaved, _tracker.EndMissed);
 
 		_runsWindow = new RunsWindow(_tracker, () => _settingsWindow!.IsOpen = true);
 		_settingsWindow = new SettingsWindow(_tracker, () => _runsWindow.IsOpen = true);

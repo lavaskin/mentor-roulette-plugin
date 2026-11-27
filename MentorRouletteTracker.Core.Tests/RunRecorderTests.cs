@@ -31,8 +31,8 @@ public class RunRecorderTests
 	public void AClearedRun_HasItsFieldsAndTime()
 	{
 		Enter();
-		_recorder.Wiped();
-		_recorder.Wiped();
+		_recorder.GameWiped(At(100));
+		_recorder.GameWiped(At(200));
 
 		var run = _recorder.Completed(At(30 + 1930));
 
@@ -112,7 +112,7 @@ public class RunRecorderTests
 		Enter();
 		for (var i = 0; i < 5; i++)
 		{
-			_recorder.Wiped();
+			_recorder.GameWiped(At(100 + i * 60));
 		}
 
 		Assert.Equal(5, _recorder.Completed(At(1000))!.Wipes);
@@ -121,7 +121,7 @@ public class RunRecorderTests
 	[Fact]
 	public void Wipes_OutsideARun_CountForNothing()
 	{
-		_recorder.Wiped();
+		_recorder.GameWiped(At(0));
 		Enter();
 
 		Assert.Equal(0, _recorder.Completed(At(1000))!.Wipes);
@@ -242,7 +242,7 @@ public class RunRecorderTests
 	public void LeavingEarly_IsARunThatWasntCleared_WithItsWipesAndTime()
 	{
 		Enter();
-		_recorder.Wiped();
+		_recorder.GameWiped(At(100));
 
 		var run = _recorder.Arrived(0, throughDutyFinder: false, At(30 + 242));
 
@@ -325,7 +325,7 @@ public class RunRecorderTests
 	public void ADisconnectAndReturn_IsOneRun_WithTheTimeAwayAndLoadingLeftOut()
 	{
 		Enter();
-		_recorder.Wiped();
+		_recorder.GameWiped(At(100));
 		_recorder.LoggedOut(At(330));
 		Assert.True(_recorder.IsAway);
 
@@ -333,7 +333,7 @@ public class RunRecorderTests
 		Assert.Null(_recorder.Arrived(Vault, throughDutyFinder: true, At(930)));
 		Assert.True(_recorder.InDuty);
 		Assert.True(_recorder.LoadedIn(At(945)));
-		_recorder.Wiped();
+		_recorder.GameWiped(At(1000));
 		var run = _recorder.Completed(At(1245));
 
 		Assert.Equal(300 + 300, run!.DurationSeconds);
@@ -413,7 +413,7 @@ public class RunRecorderTests
 	public void ACrashAndRestart_StillInTheDuty_CarriesOn()
 	{
 		Enter();
-		_recorder.Wiped();
+		_recorder.GameWiped(At(100));
 		var saved = _recorder.Snapshot(At(30 + 600));
 
 		// The game crashes; the plugin starts again, restores the saved run, and the player's back in the duty
@@ -422,7 +422,7 @@ public class RunRecorderTests
 		Assert.True(restarted.IsAway);
 		Assert.Null(restarted.Arrived(Vault, throughDutyFinder: true, At(30 + 900)));
 		restarted.LoadedIn(At(30 + 900));
-		restarted.Wiped();
+		restarted.GameWiped(At(30 + 1000));
 		var run = restarted.Completed(At(30 + 1200));
 
 		Assert.Equal(saved!.Id, run!.Id);
@@ -522,7 +522,7 @@ public class RunRecorderTests
 	public void ACrashAndRestart_OutsideTheDuty_IsRecordedAsNotCleared()
 	{
 		Enter();
-		_recorder.Wiped();
+		_recorder.GameWiped(At(100));
 		var saved = _recorder.Snapshot(At(30 + 600));
 
 		var restarted = new RunRecorder();
@@ -545,7 +545,7 @@ public class RunRecorderTests
 	private RunRecorder TurnOffAndRestart(List<uint> dropped)
 	{
 		Enter();
-		_recorder.Wiped();
+		_recorder.GameWiped(At(100));
 		var saved = _recorder.TurnedOff(At(130));
 		Assert.True(saved!.PluginTurnedOff);
 
@@ -577,7 +577,7 @@ public class RunRecorderTests
 		// Back on ten minutes later, still in the duty: the player was there all along
 		Assert.Null(restarted.Arrived(Vault, throughDutyFinder: true, At(730)));
 		Assert.False(restarted.LoadedIn(At(730)));
-		restarted.Wiped();
+		restarted.GameWiped(At(760));
 		var run = restarted.Completed(At(830));
 
 		Assert.True(run!.Cleared);
@@ -676,7 +676,7 @@ public class RunRecorderTests
 	public void TheSnapshot_CountsTheTimeUpToNow()
 	{
 		Enter();
-		_recorder.Wiped();
+		_recorder.GameWiped(At(100));
 
 		var snapshot = _recorder.Snapshot(At(90));
 
@@ -720,5 +720,394 @@ public class RunRecorderTests
 		_recorder.Completed(At(100));
 
 		Assert.Null(_recorder.Snapshot(At(100)));
+	}
+
+	// Wipes from the party
+
+	private static Party Four(bool dead, bool inCombat = false)
+	{
+		return new Party([.. Enumerable.Range(1, 4).Select(id => new PartyMember((uint)id, dead, !dead && inCombat))]);
+	}
+
+	private void DungeonWipe(int from)
+	{
+		_recorder.PartySeen(Four(dead: false, inCombat: true), At(from));
+		_recorder.PartySeen(Four(dead: true), At(from + 10));
+	}
+
+	[Fact]
+	public void ADungeonWipe_IsInTheRun()
+	{
+		Enter();
+		DungeonWipe(100);
+		_recorder.PartySeen(Four(dead: false), At(130));
+
+		var run = _recorder.Completed(At(1000));
+
+		Assert.Equal(1, run!.Wipes);
+	}
+
+	[Fact]
+	public void PartySeen_SaysWhenItCountedAWipe()
+	{
+		Enter();
+
+		Assert.False(_recorder.PartySeen(Four(dead: false, inCombat: true), At(100)));
+		Assert.True(_recorder.PartySeen(Four(dead: true), At(110)));
+		Assert.False(_recorder.PartySeen(Four(dead: true), At(111)));
+	}
+
+	[Fact]
+	public void ATrialWipe_FromThePartyAndTheGame_IsOneWipe()
+	{
+		Enter();
+		DungeonWipe(100);
+		_recorder.GameWiped(At(115));
+
+		Assert.Equal(1, _recorder.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void WipesFromThePartyAndTheGame_AddUp_WhenTheyreDifferentWipes()
+	{
+		Enter();
+		DungeonWipe(100);
+		_recorder.PartySeen(Four(dead: false), At(130));
+		_recorder.GameWiped(At(400));
+		DungeonWipe(600);
+
+		Assert.Equal(3, _recorder.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void TheParty_CountsForNothing_BeforeARun()
+	{
+		Assert.False(_recorder.PartySeen(Four(dead: false, inCombat: true), At(0)));
+		Assert.False(_recorder.PartySeen(Four(dead: true), At(5)));
+
+		Enter(popAt: 10, arriveAt: 20);
+
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void TheParty_CountsForNothing_WhileAway()
+	{
+		Enter();
+		_recorder.LoggedOut(At(100));
+		DungeonWipe(110);
+		_recorder.GameWiped(At(125));
+
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
+		_recorder.LoadedIn(At(205));
+
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void TheParty_CountsForNothing_AfterTheRunEnds()
+	{
+		Enter();
+		var run = _recorder.Completed(At(100));
+
+		DungeonWipe(110);
+		_recorder.GameWiped(At(125));
+
+		Assert.Equal(0, run!.Wipes);
+		Assert.Null(_recorder.Snapshot(At(130)));
+	}
+
+	[Fact]
+	public void TheParty_CountsForNothing_AfterARestore_UntilTheyreBack()
+	{
+		Enter();
+		var saved = _recorder.Snapshot(At(100));
+		var restarted = new RunRecorder();
+		restarted.Restore(saved!);
+
+		restarted.PartySeen(Four(dead: false, inCombat: true), At(110));
+		restarted.PartySeen(Four(dead: true), At(120));
+		restarted.GameWiped(At(125));
+
+		Assert.Equal(0, restarted.Snapshot(At(130))!.Wipes);
+	}
+
+	[Fact]
+	public void LoggingOut_ForgetsTheFight()
+	{
+		// Three died and returned to the start before the disconnect; after it, only the fourth dies
+		Enter();
+		_recorder.PartySeen(Four(dead: false, inCombat: true), At(100));
+		_recorder.PartySeen(new Party([Dead(1), Dead(2), Dead(3), Fighting(4)]), At(110));
+		_recorder.PartySeen(new Party([Idle(1), Idle(2), Idle(3), Fighting(4)]), At(120));
+		_recorder.LoggedOut(At(125));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
+		_recorder.LoadedIn(At(205));
+
+		_recorder.PartySeen(new Party([Idle(1), Idle(2), Idle(3), Fighting(4)]), At(210));
+		_recorder.PartySeen(new Party([Idle(1), Idle(2), Idle(3), Dead(4)]), At(220));
+
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void AZoneChangeInsideTheDuty_KeepsTheFight()
+	{
+		Enter();
+		_recorder.PartySeen(Four(dead: false, inCombat: true), At(100));
+		_recorder.PartySeen(new Party([Dead(1), Dead(2), Dead(3), Fighting(4)]), At(110));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(115));
+
+		_recorder.PartySeen(Four(dead: true), At(120));
+
+		Assert.Equal(1, _recorder.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void TheWipesSoFar_CarryAcrossARestore()
+	{
+		Enter();
+		DungeonWipe(100);
+		var saved = _recorder.Snapshot(At(200));
+		Assert.Equal(1, saved!.Wipes);
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(300));
+		restarted.LoadedIn(At(305));
+		restarted.PartySeen(Four(dead: false, inCombat: true), At(400));
+		restarted.PartySeen(Four(dead: true), At(410));
+
+		var run = restarted.Completed(At(1000));
+		Assert.Equal(2, run!.Wipes);
+	}
+
+	[Fact]
+	public void ARestoreDuringAWipe_DoesntCountItAgain()
+	{
+		// The game crashed with the party lying dead: the wipe was counted before it
+		Enter();
+		DungeonWipe(100);
+		var saved = _recorder.Snapshot(At(112));
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved!);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(150));
+		restarted.LoadedIn(At(155));
+		restarted.PartySeen(Four(dead: true), At(156));
+		restarted.PartySeen(Four(dead: true), At(160));
+		restarted.PartySeen(Four(dead: false), At(170));
+
+		Assert.Equal(1, restarted.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void ARestoreMidFight_StillCountsTheWipeItSees()
+	{
+		Enter();
+		var saved = _recorder.Snapshot(At(100));
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved!);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(150));
+		restarted.LoadedIn(At(155));
+		restarted.PartySeen(new Party([Dead(1), Dead(2), Fighting(3), Fighting(4)]), At(156));
+		restarted.PartySeen(Four(dead: true), At(170));
+
+		Assert.Equal(1, restarted.Completed(At(1000))!.Wipes);
+	}
+
+	[Fact]
+	public void ANewRun_StartsWithANewParty()
+	{
+		// Three of the last run's party lay dead when it was cleared; the next run's party is seen afresh
+		Enter();
+		_recorder.PartySeen(Four(dead: false, inCombat: true), At(100));
+		_recorder.PartySeen(new Party([Dead(1), Dead(2), Dead(3), Fighting(4)]), At(110));
+		_recorder.Completed(At(120));
+		_recorder.Arrived(0, throughDutyFinder: false, At(130));
+
+		Enter(popAt: 200, arriveAt: 230);
+		_recorder.PartySeen(new Party([Idle(1), Idle(2), Idle(3), Fighting(4)]), At(300));
+		_recorder.PartySeen(new Party([Idle(1), Idle(2), Idle(3), Dead(4)]), At(310));
+
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Wipes);
+	}
+
+	private static PartyMember Fighting(uint id) => new(id, Dead: false, InCombat: true);
+
+	private static PartyMember Idle(uint id) => new(id, Dead: false, InCombat: false);
+
+	private static PartyMember Dead(uint id) => new(id, Dead: true, InCombat: false);
+
+	// What it notes for the log
+
+	private List<RunNote> Notes(RunRecorder recorder)
+	{
+		var notes = new List<RunNote>();
+		recorder.Noted += notes.Add;
+		return notes;
+	}
+
+	[Fact]
+	public void ARun_IsNotedFromItsPopToItsEnd()
+	{
+		var notes = Notes(_recorder);
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.LoadedIn(At(25));
+		_recorder.JobKnown(Paladin);
+		_recorder.Commenced(At(30));
+		DungeonWipe(100);
+		var run = _recorder.Completed(At(1030));
+
+		Assert.Equal(
+			[
+				new RunNote.Popped(Replacement: false),
+				new RunNote.Started(Vault, Replacement: false),
+				new RunNote.JobKnown(Paladin),
+				new RunNote.ClockStarted(ClockStartReason.DutyCommenced),
+				new RunNote.Wiped(1, WipeSource.Party, 4),
+				new RunNote.Ended(run!, WhileAway: false),
+			],
+			notes.Where(note => note is not (RunNote.PartyChanged or RunNote.FightStarted or RunNote.FightOver or RunNote.MemberDied)));
+	}
+
+	[Fact]
+	public void AReplacementsClock_IsNotedAsStartingOnLoadingIn()
+	{
+		var notes = Notes(_recorder);
+		_recorder.Popped(isMentorRoulette: true, inProgress: true, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.LoadedIn(At(25));
+
+		Assert.Equal(
+			[new RunNote.Popped(Replacement: true), new RunNote.Started(Vault, Replacement: true), new RunNote.ClockStarted(ClockStartReason.LoadedIn)],
+			notes);
+	}
+
+	[Fact]
+	public void TheClock_IsNotedAsStartingFromTheDutyHavingStarted_WhenTheMessageWasMissed()
+	{
+		var notes = Notes(_recorder);
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		_recorder.Commenced(At(40), dutyHadStarted: true);
+
+		Assert.Equal(new RunNote.ClockStarted(ClockStartReason.DutyHadStarted), notes.Last());
+	}
+
+	[Fact]
+	public void LoggingOutAndComingBack_IsNoted()
+	{
+		Enter();
+		var notes = Notes(_recorder);
+		_recorder.LoggedOut(At(130));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(500));
+		_recorder.LoadedIn(At(505));
+
+		Assert.Equal(
+			[new RunNote.LoggedOut(100), new RunNote.BackInRun(Vault), new RunNote.ClockStarted(ClockStartReason.LoadedIn)],
+			notes);
+	}
+
+	[Fact]
+	public void AZoneChangeInsideTheDuty_IsntNotedAsComingBack()
+	{
+		Enter();
+		var notes = Notes(_recorder);
+
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(300));
+
+		Assert.Empty(notes);
+	}
+
+	[Fact]
+	public void LeavingEarly_IsNotedAsLeaving()
+	{
+		Enter();
+		var notes = Notes(_recorder);
+
+		var run = _recorder.Arrived(0, throughDutyFinder: false, At(300));
+
+		Assert.Equal([new RunNote.Ended(run!, WhileAway: false)], notes);
+	}
+
+	[Fact]
+	public void ARunThatEndedWhileAway_IsNotedAsNotComingBack()
+	{
+		Enter();
+		var saved = _recorder.Snapshot(At(300));
+		var restarted = new RunRecorder();
+		var notes = Notes(restarted);
+		restarted.Restore(saved!);
+
+		var run = restarted.Arrived(0, throughDutyFinder: false, At(5000));
+
+		Assert.Equal([new RunNote.Restored(Vault, PluginWasOff: false), new RunNote.Ended(run!, WhileAway: true)], notes);
+	}
+
+	[Fact]
+	public void ARunNeverLoadedInto_IsNotedAsDropped()
+	{
+		_recorder.Popped(isMentorRoulette: true, inProgress: false, At(0));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(20));
+		var notes = Notes(_recorder);
+
+		_recorder.Arrived(0, throughDutyFinder: false, At(30));
+
+		Assert.Equal([new RunNote.Dropped(Vault, DropReason.NeverLoadedIn)], notes);
+	}
+
+	[Fact]
+	public void ARunThePluginWasOffFor_IsNotedAsDropped()
+	{
+		Enter();
+		var saved = _recorder.TurnedOff(At(130));
+		var restarted = new RunRecorder();
+		var notes = Notes(restarted);
+		restarted.Restore(saved!);
+
+		restarted.Arrived(0, throughDutyFinder: false, At(2000));
+
+		Assert.Equal([new RunNote.Restored(Vault, PluginWasOff: true), new RunNote.Dropped(Vault, DropReason.PluginWasOff)], notes);
+	}
+
+	[Fact]
+	public void EventsWithNoRun_AreNotedAsDetail()
+	{
+		var notes = Notes(_recorder);
+		_recorder.Popped(isMentorRoulette: false, inProgress: false, At(0));
+		_recorder.GameWiped(At(10));
+
+		Assert.Equal([new RunNote.PopIgnored(), new RunNote.WipeIgnored()], notes);
+		Assert.All(notes, note => Assert.True(note.Detail));
+	}
+
+	[Fact]
+	public void TheGamesWipeMessage_IsNotedWithTheRunsCount()
+	{
+		Enter();
+		_recorder.GameWiped(At(100));
+		var notes = Notes(_recorder);
+
+		_recorder.GameWiped(At(400));
+
+		Assert.Equal([new RunNote.Wiped(2, WipeSource.GameMessage, 0)], notes);
+	}
+
+	[Fact]
+	public void NothingDuringARun_IsDetail()
+	{
+		var notes = Notes(_recorder);
+		Enter();
+		DungeonWipe(100);
+		_recorder.GameWiped(At(115));
+		_recorder.LoggedOut(At(200));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(300));
+		_recorder.LoadedIn(At(305));
+		_recorder.Completed(At(400));
+
+		Assert.All(notes, note => Assert.False(note.Detail));
 	}
 }

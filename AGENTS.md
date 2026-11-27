@@ -15,14 +15,15 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
 | `MentorRouletteTracker.Core.Tests` | xUnit tests for `Core` |
 
 - **`Core`'s folders,** each its own namespace (`Core.Models`, and so on):
-  - `Models`: plain records and enums (`Run`, `InProgressRun`, `RunOutcome`, `AcceptedPop`), one type per file, with its enum beside it.
-  - `Recording`: `RunRecorder`.
+  - `Models`: plain records and enums (`Run`, `InProgressRun`, `RunOutcome`, `AcceptedPop`, `Party`, `RunNote`), one type per file, with its enum beside it.
+  - `Recording`: `RunRecorder`, `PartyWatcher` (wipes), `PartyReading` (which party slots count).
   - `Storage`: `RunLog` (in memory), `RunStore` (on disk), `JsonFile` (how each file's written), `BackgroundSaver`.
   - `Uploading`: `RunKeeper`, `Uploader`, `IUploadSettings`.
   - `Api`: talking to the site.
-  - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `Milestones`, `Names`).
+  - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `LogLine`, `Milestones`, `Names`).
 - **How it fits together:**
-  - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, loaded in, duty commenced, wipe, duty complete, logout) to `Core.Recording.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute.
+  - `RunWatcher` (plugin) feeds the game's events (queue pop, zone arrival, loaded in, duty commenced, the game's wipe message, duty complete, logout) to `Core.Recording.RunRecorder`, a state machine that gives out finished runs, and saves the run in progress on every change and every minute. While the player's in a run's duty, it also reads the party every frame (HP and combat, by the game's object id) and hands it over as plain `PartySlot`s.
+  - `RunRecorder` counts wipes through `PartyWatcher`, which turns each frame's party and the game's wipe message into wipes (its summary has the rules). Everything it sees and decides comes out as `RunNote`s, which `RunWatcher` logs through `Core.Text.LogLine`. Notes carry counts, never who anyone is.
   - `Tracker` (plugin) hands each finished run to `Core.Uploading.RunKeeper`, which keeps it in `RunLog` (saved by `RunStore`) and uploads it through `Uploader` and `Api.MentorApiClient` if auto-upload's on.
   - `PluginFiles` (plugin) says where the settings and runs live. A dev build keeps its own in the config directory's `dev` folder, apart from the installed plugin's.
   - The upload rules (oldest first, what holds up later runs, 401 and 400) are in `Uploader`'s summary.

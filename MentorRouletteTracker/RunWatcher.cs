@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.DutyState;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Enums;
@@ -10,15 +13,20 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ContentFinderCondition = Lumina.Excel.Sheets.ContentFinderCondition;
+using GameGroupManager = FFXIVClientStructs.FFXIV.Client.Game.Group.GroupManager;
+using GamePartyMember = FFXIVClientStructs.FFXIV.Client.Game.Group.PartyMember;
 using MentorRouletteTracker.Core.Models;
 using MentorRouletteTracker.Core.Recording;
 using MentorRouletteTracker.Core.Storage;
+using MentorRouletteTracker.Core.Text;
 
 namespace MentorRouletteTracker;
 
 /// <summary>
 /// Turns the game's events into <see cref="RunRecorder"/>'s, on the framework thread, and saves the run in progress
-/// on every change and every minute, so a crash loses at most a minute of its time.
+/// on every change and every minute, so a crash loses at most a minute of its time. While the player's in a run's duty
+/// and loaded in, it reads the party every frame for the wipes. What the recorder notes goes in Dalamud's log, at
+/// Information during a run, so it's there at the default level when a run's recorded wrong.
 /// </summary>
 internal sealed unsafe class RunWatcher : IDisposable
 {
@@ -27,6 +35,11 @@ internal sealed unsafe class RunWatcher : IDisposable
 	/// </summary>
 	private const uint MentorRouletteId = 9;
 
+	/// <summary>
+	/// <see cref="GamePartyMember.Flags"/>: set for an alliance slot that's in use
+	/// </summary>
+	private const byte AllianceSlotInUse = 0x01;
+
 	private static readonly TimeSpan SaveEvery = TimeSpan.FromMinutes(1);
 
 	private readonly IClientState _clientState;
@@ -34,10 +47,13 @@ internal sealed unsafe class RunWatcher : IDisposable
 	private readonly IPlayerState _playerState;
 	private readonly IFramework _framework;
 	private readonly ICondition _condition;
+	private readonly IObjectTable _objectTable;
 	private readonly IPluginLog _log;
+	private readonly GameNames _names;
 	private readonly Action<Run> _runEnded;
 	private readonly RunRecorder _recorder = new();
 	private readonly BackgroundSaver _saver;
+	private readonly List<PartySlot> _slots = [];
 	private InProgressRun? _snapshot;
 	private DateTime _lastSave = DateTime.MinValue;
 
@@ -58,7 +74,9 @@ internal sealed unsafe class RunWatcher : IDisposable
 		IPlayerState playerState,
 		IFramework framework,
 		ICondition condition,
+		IObjectTable objectTable,
 		IPluginLog log,
+		GameNames names,
 		RunStore store,
 		Action<Run> runEnded,
 		Func<bool> runsSaved,
@@ -69,7 +87,9 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_playerState = playerState;
 		_framework = framework;
 		_condition = condition;
+		_objectTable = objectTable;
 		_log = log;
+		_names = names;
 		_runEnded = runEnded;
 		_saver = new BackgroundSaver(
 			() =>
@@ -88,15 +108,11 @@ internal sealed unsafe class RunWatcher : IDisposable
 			},
 			exception => _log.Error(exception, "Couldn't save the run in progress"));
 
-		_recorder.EndMissed += duty =>
-		{
-			_log.Information("Dropped the run in duty {Duty}: the plugin was off for part of it, and didn't see it cleared", duty);
-			endMissed(duty);
-		};
+		_recorder.Noted += OnNoted;
+		_recorder.EndMissed += endMissed;
 
 		if (store.LoadInProgress() is { } saved)
 		{
-			_log.Information("Found a run in progress from before the plugin started, in duty {Duty}, turned off {TurnedOff}", saved.GameContentId, saved.PluginTurnedOff);
 			_recorder.Restore(saved);
 			_snapshot = saved;
 		}
@@ -185,7 +201,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 	{
 		OnFramework(() =>
 		{
-			_recorder.Wiped();
+			_recorder.GameWiped(DateTime.UtcNow);
 			Save();
 		});
 	}
@@ -221,7 +237,12 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 		// A replacement's clock, or one back from a disconnect, starts once they've loaded in. Dalamud also counts the
 		// duty as started on the first combat in it, in case "Duty commenced" was missed.
-		if (settled && (_recorder.LoadedIn(now) || (_dutyState.IsDutyStarted && _recorder.Commenced(now))))
+		if (settled && (_recorder.LoadedIn(now) || (_dutyState.IsDutyStarted && _recorder.Commenced(now, dutyHadStarted: true))))
+		{
+			Save();
+		}
+
+		if (settled && _recorder.InDuty && _recorder.PartySeen(ReadParty(), now))
 		{
 			Save();
 		}
@@ -295,11 +316,71 @@ internal sealed unsafe class RunWatcher : IDisposable
 		// Kept before the run in progress is cleared, whose save waits for the runs' (above), so a crash can't lose it
 		if (run is not null)
 		{
-			_log.Information("Run ended: duty {Duty}, cleared {Cleared}, {Wipes} wipes, {Seconds}s", run.GameContentId, run.Cleared, run.Wipes, run.DurationSeconds);
 			_runEnded(run);
 		}
 
 		Save();
+	}
+
+	private void OnNoted(RunNote note)
+	{
+		var line = LogLine.Format(note, _names.Duty, _names.Job);
+		if (note.Detail)
+		{
+			_log.Debug("{Line:l}", line);
+		}
+		else
+		{
+			_log.Information("{Line:l}", line);
+		}
+	}
+
+	/// <summary>
+	/// The party as this frame shows it: the party's slots, the alliance's in an alliance raid, and the player. Whether
+	/// others are in combat can only be read while they're showing in the game.
+	/// </summary>
+	private Party ReadParty()
+	{
+		_slots.Clear();
+		var player = _objectTable.LocalPlayer;
+		var playerId = player?.EntityId ?? 0;
+		var group = GameGroupManager.Instance();
+		if (group != null)
+		{
+			ref var main = ref group->MainGroup;
+			var count = Math.Min((int)main.MemberCount, main.PartyMembers.Length);
+			for (var i = 0; i < count; i++)
+			{
+				_slots.Add(Slot(in main.PartyMembers[i], otherParty: false, playerId));
+			}
+
+			if (main.IsAlliance)
+			{
+				foreach (ref readonly var member in main.AllianceMembers)
+				{
+					if ((member.Flags & AllianceSlotInUse) != 0)
+					{
+						_slots.Add(Slot(in member, otherParty: true, playerId));
+					}
+				}
+			}
+		}
+
+		var self = new PartySlot(
+			playerId,
+			player?.CurrentHp ?? 0,
+			player?.MaxHp ?? 0,
+			_clientState.TerritoryType,
+			_condition[ConditionFlag.InCombat]);
+		return PartyReading.Read(_slots, self);
+	}
+
+	private PartySlot Slot(in GamePartyMember member, bool otherParty, uint playerId)
+	{
+		var inCombat = member.CurrentHP > 0 && (member.EntityId == playerId
+			? _condition[ConditionFlag.InCombat]
+			: _objectTable.SearchByEntityId(member.EntityId) is ICharacter character && character.StatusFlags.HasFlag(StatusFlags.InCombat));
+		return new PartySlot(member.EntityId, member.CurrentHP, member.MaxHP, member.TerritoryType, inCombat, otherParty);
 	}
 
 	private void Save()
