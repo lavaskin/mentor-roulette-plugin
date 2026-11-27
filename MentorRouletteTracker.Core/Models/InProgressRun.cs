@@ -19,6 +19,12 @@ public sealed record InProgressRun
 	public required int Wipes { get; init; }
 
 	/// <summary>
+	/// The party's deaths so far. Null in a run saved by a version that didn't count them, which carries on without
+	/// them. Not <c>required</c>, so the file those versions saved still reads.
+	/// </summary>
+	public int? Deaths { get; init; }
+
+	/// <summary>
 	/// The player's time in the duty up to <see cref="LastSeenAt"/>
 	/// </summary>
 	public required double ElapsedSeconds { get; init; }

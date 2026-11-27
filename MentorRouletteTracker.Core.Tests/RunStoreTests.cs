@@ -24,7 +24,7 @@ public sealed class RunStoreTests : IDisposable
 	{
 		var uploaded = Runs.Make(hour: 2, status: RunStatus.Uploaded) with { SiteRunId = 5123, RunNumber = 123 };
 		var failed = Runs.Make(hour: 1, status: RunStatus.Failed) with { FailedReason = "That duty isn't in the Mentor Roulette.", Replacement = true, Wipes = 3 };
-		var waiting = Runs.Make(hour: 0) with { Cleared = false };
+		var waiting = Runs.Make(hour: 0) with { Cleared = false, Deaths = 7 };
 
 		_store.SaveRuns([uploaded, failed, waiting]);
 
@@ -55,6 +55,7 @@ public sealed class RunStoreTests : IDisposable
 			GameClassJobId = 19,
 			Replacement = true,
 			Wipes = 2,
+			Deaths = 9,
 			ElapsedSeconds = 612.25,
 			EnteredAt = Runs.Day.AddHours(2).AddMinutes(50),
 			LastSeenAt = Runs.Day.AddHours(3),
@@ -85,6 +86,64 @@ public sealed class RunStoreTests : IDisposable
 
 		Assert.Null(run!.EnteredAt);
 		Assert.Equal(600, run.ElapsedSeconds);
+		Assert.Empty(_warnings);
+	}
+
+	[Fact]
+	public void ARunInProgress_SavedWithoutDeaths_ReadsWithNone()
+	{
+		File.WriteAllText(Path.Combine(_directory, RunStore.InProgressFileName), """
+			{
+			  "id": "6f1f8d0e-3c1a-4a51-9a51-6f0a2b1c9d11",
+			  "gameContentId": 421,
+			  "gameClassJobId": 19,
+			  "replacement": false,
+			  "wipes": 1,
+			  "elapsedSeconds": 600,
+			  "enteredAt": "2026-11-05T03:00:00Z",
+			  "lastSeenAt": "2026-11-05T03:10:00Z",
+			  "awaitingDutyCommenced": false,
+			  "pluginTurnedOff": false,
+			  "clockRanWhileOff": false
+			}
+			""");
+
+		var run = _store.LoadInProgress();
+
+		Assert.Null(run!.Deaths);
+		Assert.Equal(1, run.Wipes);
+		Assert.Empty(_warnings);
+	}
+
+	[Fact]
+	public void RunsSavedWithoutDeaths_ReadWithNone()
+	{
+		File.WriteAllText(Path.Combine(_directory, RunStore.RunsFileName), """
+			{
+			  "version": 1,
+			  "runs": [
+			    {
+			      "id": "6f1f8d0e-3c1a-4a51-9a51-6f0a2b1c9d11",
+			      "gameContentId": 421,
+			      "gameClassJobId": 19,
+			      "cleared": true,
+			      "replacement": false,
+			      "wipes": 2,
+			      "durationSeconds": 1930,
+			      "datePlayed": "2026-11-05T03:00:00Z",
+			      "status": "uploaded",
+			      "siteRunId": 5123,
+			      "runNumber": 123,
+			      "failedReason": null
+			    }
+			  ]
+			}
+			""");
+
+		var run = Assert.Single(_store.LoadRuns());
+
+		Assert.Null(run.Deaths);
+		Assert.Equal(2, run.Wipes);
 		Assert.Empty(_warnings);
 	}
 

@@ -6,7 +6,19 @@
 - Leaving or being kicked before the clear is a run that wasn't cleared.
 - Disconnecting and coming back to the same duty is one run, and the time you were away doesn't count.
 - If the game crashes and you don't get back in, the run is recorded as not cleared the next time you log in.
-- If you turn the plugin off during a run (or it's reloaded or updated), it can't know how the run ended, so the run is logged only if the plugin's back on in time to see you clear it. Otherwise it isn't logged, and a chat line says so: you can log it on the site. If it's back on before you leave, the time it was off still counts, but any wipes then are missed.
+- If you turn the plugin off during a run (or it's reloaded or updated), it can't know how the run ended, so the run is logged only if the plugin's back on in time to see you clear it. Otherwise it isn't logged, and a chat line says so: you can log it on the site. If it's back on before you leave, the time it was off still counts, but any wipes and deaths then are missed.
+
+## Wipes
+
+A wipe is everyone in the party dying in the same fight (all 24 players in an alliance raid), or the game resetting the whole party, which it does in trials and raids. They don't have to die at the same moment: someone who dies early and returns to the start still counts, as long as the rest die too. A fight starts when anyone alive is in combat, and ends once nobody alive is. Anyone still lying dead when the next fight starts counts as having died in it, so the whole party dead at once is always a wipe. Someone raised who's back in combat is still fighting, and three dying while the fourth finishes the fight isn't a wipe. A member who's disconnected or not in the duty doesn't have to die.
+
+The plugin can only see whether others are in combat while they're close enough to show in the game. So if you've returned to the start and the rest of the party is fighting too far away to show, the fight can look over before they die, and that wipe is missed. Wipes while the plugin is off are missed too. You can fix the count on the site.
+
+## Deaths
+
+A death is anyone in the duty with you hitting 0 HP: your party, the other two parties in an alliance raid, and you. Dying, being raised and dying again is two deaths, and a wipe counts each death in it, so a dungeon wipe is 1 wipe and 4 deaths. Tank abilities that keep HP at 1 or more never count.
+
+Deaths only count while you're in the duty and loaded in, the same as your time, and stop when the run ends. Someone who joins partway through counts from when they arrive. Someone who's already dead when you first see them (you just joined as a replacement, came back from a disconnect, or the plugin was turned back on) counts only once they're raised and die again. A run saved before the plugin counted deaths (if it was updated partway through) is sent without them, rather than with part of them. You can fix the count on the site.
 
 ## Your time
 
@@ -19,9 +31,9 @@ When a cleared run that you weren't a replacement in is logged, its chat line sa
 - **Your runs** (`/mrt`) lists every run the plugin has recorded, newest first, uploaded or not. An uploaded run's number links to it on the site.
 - **Auto-upload** (on by default) uploads each run when it ends. **Upload N runs** sends every run that isn't uploaded, oldest first. Runs are numbered in the order they reach the site, so runs uploaded late come after any runs you've logged since, but keep the dates they were played.
 - **If the site can't be reached,** the run waits, and it tries again when the plugin starts and after your next run. **If the site refuses a run,** it's marked Failed with the reason, and you can retry it. A retry can't log a run twice.
-- **Fixing a run:** upload it, then edit its wipes or notes on the site. Its duty, job, date, result and time are what the plugin recorded, so the site won't change them: if one's wrong, delete the run on the site and log it there by hand. A run that isn't uploaded can be deleted.
+- **Fixing a run:** upload it, then edit its wipes, deaths or notes on the site. Its duty, job, date, result and time are what the plugin recorded, so the site won't change them: if one's wrong, delete the run on the site and log it there by hand. A run that isn't uploaded can be deleted.
 - **Deleting runs:** the plugin keeps every run until you delete it. Settings can delete the uploaded runs, or all of them. Runs already on the site stay there.
 
 ## What it keeps and sends
 
-The runs are kept in the plugin's config folder (`pluginConfigs/MentorRouletteTracker/runs.json`), and the token in its settings. It sends the site only the duty, your job, whether it was cleared, whether you were a replacement, the wipes, your time and when you entered the duty. Never your character's name, or anything about anyone else in the duty.
+The runs are kept in the plugin's config folder (`pluginConfigs/MentorRouletteTracker/runs.json`), and the token in its settings. It sends the site only the duty, your job, whether it was cleared, whether you were a replacement, the wipes, the party's deaths, your time and when you entered the duty. Never your character's name, or anything that identifies anyone else in the duty: no names or ids, only a count of the party's deaths. The ids it uses to tell party members apart are only ever kept in memory.

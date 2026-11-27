@@ -13,12 +13,15 @@ using ContentFinderCondition = Lumina.Excel.Sheets.ContentFinderCondition;
 using MentorRouletteTracker.Core.Models;
 using MentorRouletteTracker.Core.Recording;
 using MentorRouletteTracker.Core.Storage;
+using MentorRouletteTracker.Core.Text;
 
 namespace MentorRouletteTracker;
 
 /// <summary>
 /// Turns the game's events into <see cref="RunRecorder"/>'s, on the framework thread, and saves the run in progress
-/// on every change and every minute, so a crash loses at most a minute of its time.
+/// on every change and every minute, so a crash loses at most a minute of its time. While the player's in a run's duty
+/// and loaded in, it reads the party every frame (<see cref="PartyReader"/>) for the wipes and deaths. What the recorder notes
+/// goes in Dalamud's log, at Information during a run, so it's there at the default level when a run's recorded wrong.
 /// </summary>
 internal sealed unsafe class RunWatcher : IDisposable
 {
@@ -35,9 +38,11 @@ internal sealed unsafe class RunWatcher : IDisposable
 	private readonly IFramework _framework;
 	private readonly ICondition _condition;
 	private readonly IPluginLog _log;
+	private readonly GameNames _names;
 	private readonly Action<Run> _runEnded;
 	private readonly RunRecorder _recorder = new();
 	private readonly BackgroundSaver _saver;
+	private readonly PartyReader _party;
 	private InProgressRun? _snapshot;
 	private DateTime _lastSave = DateTime.MinValue;
 
@@ -45,6 +50,11 @@ internal sealed unsafe class RunWatcher : IDisposable
 	/// Whether the plugin has looked at where the player is since it started
 	/// </summary>
 	private bool _lookedOnStart;
+
+	/// <summary>
+	/// Reading the party has failed this run, and been logged
+	/// </summary>
+	private bool _partyFailed;
 
 	/// <param name="runEnded">Each finished run, on the framework thread, which keeps it and asks for it to be saved</param>
 	/// <param name="runsSaved">Waits for the kept runs to be saved, and says whether they were</param>
@@ -58,7 +68,9 @@ internal sealed unsafe class RunWatcher : IDisposable
 		IPlayerState playerState,
 		IFramework framework,
 		ICondition condition,
+		IObjectTable objectTable,
 		IPluginLog log,
+		GameNames names,
 		RunStore store,
 		Action<Run> runEnded,
 		Func<bool> runsSaved,
@@ -69,7 +81,9 @@ internal sealed unsafe class RunWatcher : IDisposable
 		_playerState = playerState;
 		_framework = framework;
 		_condition = condition;
+		_party = new PartyReader(clientState, condition, objectTable);
 		_log = log;
+		_names = names;
 		_runEnded = runEnded;
 		_saver = new BackgroundSaver(
 			() =>
@@ -88,15 +102,11 @@ internal sealed unsafe class RunWatcher : IDisposable
 			},
 			exception => _log.Error(exception, "Couldn't save the run in progress"));
 
-		_recorder.EndMissed += duty =>
-		{
-			_log.Information("Dropped the run in duty {Duty}: the plugin was off for part of it, and didn't see it cleared", duty);
-			endMissed(duty);
-		};
+		_recorder.Noted += OnNoted;
+		_recorder.EndMissed += endMissed;
 
 		if (store.LoadInProgress() is { } saved)
 		{
-			_log.Information("Found a run in progress from before the plugin started, in duty {Duty}, turned off {TurnedOff}", saved.GameContentId, saved.PluginTurnedOff);
 			_recorder.Restore(saved);
 			_snapshot = saved;
 		}
@@ -185,7 +195,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 	{
 		OnFramework(() =>
 		{
-			_recorder.Wiped();
+			_recorder.GameWiped(DateTime.UtcNow);
 			Save();
 		});
 	}
@@ -221,7 +231,12 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 		// A replacement's clock, or one back from a disconnect, starts once they've loaded in. Dalamud also counts the
 		// duty as started on the first combat in it, in case "Duty commenced" was missed.
-		if (settled && (_recorder.LoadedIn(now) || (_dutyState.IsDutyStarted && _recorder.Commenced(now))))
+		if (settled && (_recorder.LoadedIn(now) || (_dutyState.IsDutyStarted && _recorder.Commenced(now, dutyHadStarted: true))))
+		{
+			Save();
+		}
+
+		if (settled && _recorder.InDuty && PartySeen(now))
 		{
 			Save();
 		}
@@ -295,11 +310,52 @@ internal sealed unsafe class RunWatcher : IDisposable
 		// Kept before the run in progress is cleared, whose save waits for the runs' (above), so a crash can't lose it
 		if (run is not null)
 		{
-			_log.Information("Run ended: duty {Duty}, cleared {Cleared}, {Wipes} wipes, {Seconds}s", run.GameContentId, run.Cleared, run.Wipes, run.DurationSeconds);
 			_runEnded(run);
 		}
 
 		Save();
+	}
+
+	/// <summary>
+	/// Reads the party and hands it to the recorder. A failure is logged once a run, and doesn't stop the rest of the
+	/// frame (the job, the save), so the run's still recorded, with its wipes from the game's wipe message alone, and
+	/// no deaths counted while it fails.
+	/// </summary>
+	/// <returns>Whether it counted a death or a wipe</returns>
+	private bool PartySeen(DateTime now)
+	{
+		try
+		{
+			return _recorder.PartySeen(_party.Read(), now);
+		}
+		catch (Exception exception)
+		{
+			if (!_partyFailed)
+			{
+				_partyFailed = true;
+				_log.Warning(exception, "Couldn't read the party, so wipes only count from the game's wipe message, and deaths don't count, while it fails (logged once a run)");
+			}
+
+			return false;
+		}
+	}
+
+	private void OnNoted(RunNote note)
+	{
+		if (note is RunNote.Started)
+		{
+			_partyFailed = false;
+		}
+
+		var line = LogLine.Format(note, _names.Duty, _names.Job);
+		if (note is RunNote.Ignored)
+		{
+			_log.Debug("{Line:l}", line);
+		}
+		else
+		{
+			_log.Information("{Line:l}", line);
+		}
 	}
 
 	private void Save()

@@ -28,6 +28,16 @@ namespace MentorRouletteTracker.Core.Recording;
 /// it's given out only if the recorder sees the clear. Ending any other way drops it, and raises
 /// <see cref="EndMissed"/>.
 /// </para>
+/// <para>
+/// Its wipes are the party's, from <see cref="PartyWatcher"/>: everyone in the party dying in the same fight, or the
+/// game's wipe message. Only while the player's in the duty: the party's seen afresh each time they're in it, at the
+/// run's start and on coming back.
+/// </para>
+/// <para>
+/// Its deaths are the party's too, everyone in the duty included, counted by <see cref="PartyWatcher"/> in the same
+/// window. A run restored from a version that didn't count them carries on without them, rather than send part of the
+/// count. More than the site takes (<see cref="Run.MaxDeaths"/>) are left out of the run.
+/// </para>
 /// Not thread safe: the plugin calls it from the game's framework thread only.
 /// </summary>
 public sealed class RunRecorder
@@ -38,8 +48,19 @@ public sealed class RunRecorder
 	/// </summary>
 	public static readonly TimeSpan PopLifetime = TimeSpan.FromMinutes(5);
 
+	private readonly PartyWatcher _party = new();
 	private Pop? _pop;
 	private Current? _current;
+
+	public RunRecorder()
+	{
+		_party.Noted += Note;
+	}
+
+	/// <summary>
+	/// What it saw and decided, for the log
+	/// </summary>
+	public event Action<RunNote>? Noted;
 
 	/// <summary>
 	/// A run the plugin was turned off for part of ended without the recorder seeing the clear, and was dropped. Gives
@@ -71,6 +92,7 @@ public sealed class RunRecorder
 	public void Popped(bool isMentorRoulette, bool inProgress, DateTime at)
 	{
 		_pop = isMentorRoulette ? new Pop(inProgress, at) : null;
+		Note(isMentorRoulette ? new RunNote.Popped(inProgress) : new RunNote.PopIgnored());
 	}
 
 	/// <summary>
@@ -97,13 +119,19 @@ public sealed class RunRecorder
 		{
 			if (contentFinderConditionId != 0 && contentFinderConditionId == current.GameContentId)
 			{
-				if (current is { Away: true, ClockRanWhileOff: true })
+				if (current.Away)
 				{
-					current.RunningSince = current.LastSeenAt;
-					current.ClockRanWhileOff = false;
+					if (current.ClockRanWhileOff)
+					{
+						current.RunningSince = current.LastSeenAt;
+						current.ClockRanWhileOff = false;
+					}
+
+					current.Away = false;
+					_party.Reset();
+					Note(new RunNote.BackInRun(current.GameContentId));
 				}
 
-				current.Away = false;
 				return null;
 			}
 
@@ -120,7 +148,10 @@ public sealed class RunRecorder
 				StartsOn = pop.InProgress ? ClockStart.LoadedIn : ClockStart.Commenced,
 				EnteredAt = at,
 				LastSeenAt = at,
+				Deaths = 0,
 			};
+			_party.Reset();
+			Note(new RunNote.Started(contentFinderConditionId, pop.InProgress));
 		}
 
 		return finished;
@@ -139,14 +170,18 @@ public sealed class RunRecorder
 		}
 
 		current.RunningSince = at;
+		Note(new RunNote.ClockStarted(ClockStartReason.LoadedIn));
 		return true;
 	}
 
 	/// <summary>
 	/// "Duty commenced": starts the clock, if it hasn't started
 	/// </summary>
+	/// <param name="dutyHadStarted">
+	/// It's the game saying the duty has started, not the message, which can be missed (the plugin reloaded as it came)
+	/// </param>
 	/// <returns>Whether it started the clock</returns>
-	public bool Commenced(DateTime at)
+	public bool Commenced(DateTime at, bool dutyHadStarted = false)
 	{
 		if (_current is not { Away: false, RunningSince: null } current)
 		{
@@ -154,6 +189,7 @@ public sealed class RunRecorder
 		}
 
 		current.RunningSince = at;
+		Note(new RunNote.ClockStarted(dutyHadStarted ? ClockStartReason.DutyHadStarted : ClockStartReason.DutyCommenced));
 		return true;
 	}
 
@@ -165,15 +201,69 @@ public sealed class RunRecorder
 		if (NeedsJob && classJobId != 0)
 		{
 			_current!.GameClassJobId = classJobId;
+			Note(new RunNote.JobKnown(classJobId));
 		}
 	}
 
-	public void Wiped()
+	/// <summary>
+	/// What one frame shows of the party, once the player's loaded in. Counts its deaths, and a wipe if it finished
+	/// one.
+	/// </summary>
+	/// <returns>Whether it counted a death or a wipe</returns>
+	public bool PartySeen(Party party, DateTime at)
 	{
-		if (InDuty)
+		if (!InDuty)
 		{
-			_current!.Wipes++;
+			return false;
 		}
+
+		var frame = _party.Seen(party, at);
+		var counted = CountDeaths(frame.Deaths);
+		if (frame.Wipe is { } source)
+		{
+			CountWipe(source, frame.WipeMembers);
+			counted = true;
+		}
+
+		return counted;
+	}
+
+	/// <summary>
+	/// The game's wipe message, when it resets the whole party. Counts a wipe unless it was already counted from the
+	/// party.
+	/// </summary>
+	public void GameWiped(DateTime at)
+	{
+		if (!InDuty)
+		{
+			Note(new RunNote.WipeIgnored());
+			return;
+		}
+
+		if (_party.GameWiped(at) is { } source)
+		{
+			CountWipe(source, 0);
+		}
+	}
+
+	private bool CountDeaths(int deaths)
+	{
+		var current = _current!;
+		if (deaths == 0 || current.Deaths is not { } before)
+		{
+			return false;
+		}
+
+		current.Deaths = before + deaths;
+		Note(new RunNote.DeathsCounted(before + deaths));
+		return true;
+	}
+
+	private void CountWipe(WipeSource source, int members)
+	{
+		var current = _current!;
+		current.Wipes++;
+		Note(new RunNote.Wiped(current.Wipes, source, members));
 	}
 
 	/// <summary>
@@ -198,6 +288,7 @@ public sealed class RunRecorder
 		current.Away = true;
 		current.StartsOn = ClockStart.LoadedIn;
 		current.LastSeenAt = at;
+		Note(new RunNote.LoggedOut((int)current.Elapsed.TotalSeconds));
 	}
 
 	/// <summary>
@@ -218,6 +309,7 @@ public sealed class RunRecorder
 			GameClassJobId = current.GameClassJobId,
 			Replacement = current.Replacement,
 			Wipes = current.Wipes,
+			Deaths = current.Deaths,
 			ElapsedSeconds = elapsed.TotalSeconds,
 			EnteredAt = current.EnteredAt,
 			LastSeenAt = current.Away ? current.LastSeenAt : at,
@@ -259,6 +351,7 @@ public sealed class RunRecorder
 			GameClassJobId = run.GameClassJobId,
 			Replacement = run.Replacement,
 			Wipes = run.Wipes,
+			Deaths = run.Deaths,
 			Elapsed = TimeSpan.FromSeconds(run.ElapsedSeconds),
 			Away = true,
 			StartsOn = run.AwaitingDutyCommenced ? ClockStart.Commenced : ClockStart.LoadedIn,
@@ -267,6 +360,7 @@ public sealed class RunRecorder
 			PluginWasOff = run.PluginTurnedOff,
 			ClockRanWhileOff = run.ClockRanWhileOff,
 		};
+		Note(new RunNote.Restored(run.GameContentId, run.PluginTurnedOff));
 	}
 
 	private Run? Finish(bool cleared, DateTime at)
@@ -276,12 +370,14 @@ public sealed class RunRecorder
 
 		if (current.PluginWasOff && !cleared)
 		{
+			Note(new RunNote.Dropped(current.GameContentId, DropReason.PluginWasOff));
 			EndMissed?.Invoke(current.GameContentId);
 			return null;
 		}
 
 		if (current.GameClassJobId == 0)
 		{
+			Note(new RunNote.Dropped(current.GameContentId, DropReason.NeverLoadedIn));
 			return null;
 		}
 
@@ -289,7 +385,14 @@ public sealed class RunRecorder
 		StopClock(current, endedAt);
 		var enteredAt = current.EnteredAt ?? endedAt - current.Elapsed;
 
-		return new Run
+		var deaths = current.Deaths;
+		if (deaths > Run.MaxDeaths)
+		{
+			Note(new RunNote.TooManyDeaths(deaths.Value));
+			deaths = null;
+		}
+
+		var run = new Run
 		{
 			Id = current.Id,
 			GameContentId = current.GameContentId,
@@ -297,9 +400,17 @@ public sealed class RunRecorder
 			Cleared = cleared,
 			Replacement = current.Replacement,
 			Wipes = current.Wipes,
+			Deaths = deaths,
 			DurationSeconds = Math.Max(1, (int)current.Elapsed.TotalSeconds),
 			DatePlayed = DateTime.SpecifyKind(enteredAt, DateTimeKind.Utc),
 		};
+		Note(new RunNote.Ended(run, current.Away));
+		return run;
+	}
+
+	private void Note(RunNote note)
+	{
+		Noted?.Invoke(note);
 	}
 
 	private static void StopClock(Current current, DateTime at)
@@ -336,6 +447,11 @@ public sealed class RunRecorder
 		public uint GameClassJobId { get; set; }
 		public required bool Replacement { get; init; }
 		public int Wipes { get; set; }
+
+		/// <summary>
+		/// The party's deaths so far, or null in a run restored from a version that didn't count them
+		/// </summary>
+		public int? Deaths { get; set; }
 
 		/// <summary>
 		/// Time in the duty before <see cref="RunningSince"/>
