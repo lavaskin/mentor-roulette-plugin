@@ -16,7 +16,7 @@ public class LogLineTests
 			job => job == Paladin ? "Paladin" : "Unknown job");
 	}
 
-	private static Run Run(bool cleared, int wipes, int seconds) => new()
+	private static Run Run(bool cleared, int wipes, int seconds, int? deaths = null) => new()
 	{
 		Id = Guid.NewGuid(),
 		GameContentId = Gauntlet,
@@ -24,6 +24,7 @@ public class LogLineTests
 		Cleared = cleared,
 		Replacement = false,
 		Wipes = wipes,
+		Deaths = deaths,
 		DurationSeconds = seconds,
 		DatePlayed = DateTime.UtcNow,
 	};
@@ -46,6 +47,11 @@ public class LogLineTests
 		{ new RunNote.MemberDied(2, 3, 4), "A party member died: 2 of 4 dead, 3 of 4 have died this fight" },
 		{ new RunNote.MemberDied(1, null, 4), "A party member died: 1 of 4 dead, outside a fight" },
 		{ new RunNote.MemberUp(1, 4), "A party member is up again: 1 of 4 dead" },
+		{ new RunNote.MemberDied(10, 12, 24, OtherParty: true), "A member of another party died: 10 of 24 in the alliance dead, 12 of 24 have died this fight" },
+		{ new RunNote.MemberDied(1, null, 24, OtherParty: true), "A member of another party died: 1 of 24 in the alliance dead, outside a fight" },
+		{ new RunNote.MemberUp(9, 24, OtherParty: true), "A member of another party is up again: 9 of 24 in the alliance dead" },
+		{ new RunNote.DeathsCounted(5), "Deaths this run: 5" },
+		{ new RunNote.TooManyDeaths(1003), "1003 deaths is more than the site takes (999), so the run is sent without them" },
 		{ new RunNote.Wiped(1, WipeSource.Party, 4), "Wipe 1: everyone in the party died this fight (4 of 4)" },
 		{ new RunNote.Wiped(2, WipeSource.GameMessage, 0), "Wipe 2: the game's wipe message" },
 		{ new RunNote.WipeSkipped(WipeSource.GameMessage, TimeSpan.FromSeconds(3.4)), "The game's wipe message: already counted from the party 3s ago" },
@@ -53,6 +59,8 @@ public class LogLineTests
 		{ new RunNote.LoggedOut(723), "Logged out: clock stopped at 12m 3s" },
 		{ new RunNote.BackInRun(Gauntlet), "Back in the run: The Heroes' Gauntlet (737)" },
 		{ new RunNote.Ended(Run(cleared: true, wipes: 1, seconds: 1102), WhileAway: false), "Run ended: The Heroes' Gauntlet (737), cleared, 1 wipe, 18m 22s" },
+		{ new RunNote.Ended(Run(cleared: true, wipes: 1, seconds: 1102, deaths: 6), WhileAway: false), "Run ended: The Heroes' Gauntlet (737), cleared, 1 wipe, 6 deaths, 18m 22s" },
+		{ new RunNote.Ended(Run(cleared: true, wipes: 0, seconds: 1102, deaths: 1), WhileAway: false), "Run ended: The Heroes' Gauntlet (737), cleared, 0 wipes, 1 death, 18m 22s" },
 		{ new RunNote.Ended(Run(cleared: false, wipes: 2, seconds: 300), WhileAway: false), "Run ended: The Heroes' Gauntlet (737), not cleared (left), 2 wipes, 5m" },
 		{ new RunNote.Ended(Run(cleared: false, wipes: 0, seconds: 300), WhileAway: true), "Run ended: The Heroes' Gauntlet (737), not cleared (not back after logging out or a crash), 0 wipes, 5m" },
 		{ new RunNote.Dropped(Gauntlet, DropReason.NeverLoadedIn), "Run dropped: The Heroes' Gauntlet (737), never loaded in, so there's no job" },

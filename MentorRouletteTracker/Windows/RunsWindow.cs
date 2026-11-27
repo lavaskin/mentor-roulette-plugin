@@ -106,7 +106,7 @@ public sealed class RunsWindow : Window
 
 		const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.ScrollY
 			| ImGuiTableFlags.Resizable | ImGuiTableFlags.SizingFixedFit;
-		if (!ImGui.BeginTable("Runs", 9, flags))
+		if (!ImGui.BeginTable("Runs", 10, flags))
 		{
 			return;
 		}
@@ -118,6 +118,7 @@ public sealed class RunsWindow : Window
 		ImGui.TableSetupColumn("Cleared");
 		ImGui.TableSetupColumn("Replacement");
 		ImGui.TableSetupColumn("Wipes");
+		ImGui.TableSetupColumn("Deaths");
 		ImGui.TableSetupColumn("Time");
 		ImGui.TableSetupColumn("Status");
 		ImGui.TableSetupColumn("##Actions");
@@ -155,6 +156,12 @@ public sealed class RunsWindow : Window
 		ImGui.TextUnformatted(run.Replacement ? "Yes" : "No");
 		ImGui.TableNextColumn();
 		ImGui.TextUnformatted(run.Wipes.ToString("N0"));
+		ImGui.TableNextColumn();
+		if (run.Deaths is { } deaths)
+		{
+			ImGui.TextUnformatted(deaths.ToString("N0"));
+		}
+
 		ImGui.TableNextColumn();
 		ImGui.TextUnformatted(Duration.Format(run.DurationSeconds));
 

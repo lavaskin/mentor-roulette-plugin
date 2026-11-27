@@ -45,15 +45,26 @@ public abstract record RunNote
 	public sealed record FightOver(FightEnd Reason) : RunNote;
 
 	/// <summary>
-	/// A member of the player's own party died. The counts are their own party's.
+	/// A member of the party died. The counts are the player's own party's, or the whole alliance's for a member of
+	/// another party.
 	/// </summary>
 	/// <param name="DiedThisFight">Null outside a fight</param>
-	public sealed record MemberDied(int Dead, int? DiedThisFight, int Of) : RunNote;
+	/// <param name="OtherParty">In another party of the alliance</param>
+	public sealed record MemberDied(int Dead, int? DiedThisFight, int Of, bool OtherParty = false) : RunNote;
 
 	/// <summary>
-	/// A member of the player's own party is alive again: raised, or returned to the start
+	/// A member of the party is alive again: raised, or returned to the start. The counts are like
+	/// <see cref="MemberDied"/>'s.
 	/// </summary>
-	public sealed record MemberUp(int Dead, int Of) : RunNote;
+	public sealed record MemberUp(int Dead, int Of, bool OtherParty = false) : RunNote;
+
+	/// <param name="Number">The run's deaths so far, this frame's included</param>
+	public sealed record DeathsCounted(int Number) : RunNote;
+
+	/// <summary>
+	/// The run ended with more deaths than the site takes (<see cref="Run.MaxDeaths"/>), so it's sent without them
+	/// </summary>
+	public sealed record TooManyDeaths(int Deaths) : RunNote;
 
 	/// <param name="Number">The run's wipes so far, this one included</param>
 	/// <param name="Members">Everyone who had to die, for a wipe seen from the party</param>

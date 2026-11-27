@@ -51,6 +51,7 @@ public sealed class MentorApiClient : IMentorApi
 			run.Cleared,
 			run.Replacement,
 			run.Wipes,
+			run.Deaths,
 			run.DurationSeconds,
 			DateTime.SpecifyKind(run.DatePlayed, DateTimeKind.Utc));
 
@@ -184,6 +185,7 @@ public sealed class MentorApiClient : IMentorApi
 		bool Completed,
 		bool Replacement,
 		int Wipes,
+		int? Deaths,
 		int DurationSeconds,
 		DateTime DatePlayed);
 

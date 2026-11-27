@@ -3,13 +3,18 @@ using MentorRouletteTracker.Core.Models;
 namespace MentorRouletteTracker.Core.Recording;
 
 /// <summary>
-/// Says when the party wipes, from what each frame shows of it and the game's wipe message. The game only sends its
-/// message when it resets the whole party (trials and raids), so in dungeons and guildhests, where each player returns
-/// to the start themselves, the party is all there is.
+/// Counts the party's deaths, and says when it wipes, from what each frame shows of it and the game's wipe message.
+/// The game only sends its message when it resets the whole party (trials and raids), so in dungeons and guildhests,
+/// where each player returns to the start themselves, the party is all there is.
 /// <list type="bullet">
 /// <item>
 /// <b>A fight</b> starts when anyone alive is in combat, and is over once nobody alive is. Someone who returned to the
 /// start is alive and out of combat, so the fight carries on while the rest of the party fights.
+/// </item>
+/// <item>
+/// <b>A death</b> is a member already seen going from alive to dead, in any party of the alliance. Someone first seen
+/// dead (after the plugin starts, coming back, or joining) isn't one until they're up and die again. Dying, being
+/// raised and dying again is two.
 /// </item>
 /// <item>
 /// <b>A wipe</b> is everyone in the party (all of the alliance in an alliance raid) out of the fight: each is dead, or
@@ -42,20 +47,19 @@ public sealed class PartyWatcher
 	private RunNote.PartyChanged? _lastPartyNote;
 
 	/// <summary>
-	/// What it saw, for the log: the party's size, fights, deaths in the player's own party, and wipes skipped
+	/// What it saw, for the log: the party's size, fights, each death and member up again, and wipes skipped
 	/// </summary>
 	public event Action<RunNote>? Noted;
 
 	/// <summary>
 	/// What one frame shows of the party
 	/// </summary>
-	/// <returns>A wipe, if this frame finished one that wasn't already counted</returns>
-	public (WipeSource Source, int Members)? Seen(Party party, DateTime at)
+	/// <returns>Its deaths, and a wipe if it finished one that wasn't already counted</returns>
+	public PartyFrame Seen(Party party, DateTime at)
 	{
 		_frame++;
-		var anyDied = false;
-		var died = 0;
-		var up = 0;
+		var died = new Counts();
+		var up = new Counts();
 
 		foreach (var seen in party.Members)
 		{
@@ -75,12 +79,11 @@ public sealed class PartyWatcher
 			if (!member.Dead && seen.Dead)
 			{
 				member.DiedThisFight = true;
-				anyDied = true;
-				died += seen.OtherParty ? 0 : 1;
+				died.Add(seen.OtherParty);
 			}
 			else if (member.Dead && !seen.Dead)
 			{
-				up += seen.OtherParty ? 0 : 1;
+				up.Add(seen.OtherParty);
 			}
 
 			member.See(seen, _frame);
@@ -100,9 +103,10 @@ public sealed class PartyWatcher
 			}
 		}
 
-		NoteDeaths(died, up);
+		NoteDeaths(died, up, otherParty: false);
+		NoteDeaths(died, up, otherParty: true);
 
-		var wipe = anyDied && _members.Values.All(member => member.Dead || (member.DiedThisFight && !member.InCombat))
+		var wipe = died.All > 0 && _members.Values.All(member => member.Dead || (member.DiedThisFight && !member.InCombat))
 			? PartyWiped(at)
 			: null;
 
@@ -111,7 +115,7 @@ public sealed class PartyWatcher
 			EndFight(FightEnd.NobodyInCombat);
 		}
 
-		return wipe;
+		return wipe is var (source, members) ? new PartyFrame(died.All, source, members) : new PartyFrame(died.All);
 	}
 
 	/// <summary>
@@ -216,28 +220,57 @@ public sealed class PartyWatcher
 	}
 
 	/// <summary>
-	/// A line for each death and each member alive again in the player's own party, with the counts after this frame
+	/// A line for each death and each member alive again, with the counts after this frame: the player's own party's
+	/// for their own party, and the whole alliance's for the other parties
 	/// </summary>
-	private void NoteDeaths(int died, int up)
+	private void NoteDeaths(Counts died, Counts up, bool otherParty)
 	{
-		if (died == 0 && up == 0)
+		var diedHere = died.Of(otherParty);
+		var upHere = up.Of(otherParty);
+		if (diedHere == 0 && upHere == 0)
 		{
 			return;
 		}
 
-		var own = _members.Values.Where(member => !member.OtherParty).ToList();
-		var dead = own.Count(member => member.Dead);
-		int? diedThisFight = _inFight ? own.Count(member => member.DiedThisFight) : null;
+		var among = otherParty ? _members.Values.ToList() : _members.Values.Where(member => !member.OtherParty).ToList();
+		var dead = among.Count(member => member.Dead);
+		int? diedThisFight = _inFight ? among.Count(member => member.DiedThisFight) : null;
 
-		for (var i = 0; i < died; i++)
+		for (var i = 0; i < diedHere; i++)
 		{
-			Noted?.Invoke(new RunNote.MemberDied(dead, diedThisFight, own.Count));
+			Noted?.Invoke(new RunNote.MemberDied(dead, diedThisFight, among.Count, otherParty));
 		}
 
-		for (var i = 0; i < up; i++)
+		for (var i = 0; i < upHere; i++)
 		{
-			Noted?.Invoke(new RunNote.MemberUp(dead, own.Count));
+			Noted?.Invoke(new RunNote.MemberUp(dead, among.Count, otherParty));
 		}
+	}
+
+	/// <summary>
+	/// Members in one frame, in the player's own party and the alliance's others
+	/// </summary>
+	private struct Counts
+	{
+		public int Own { get; private set; }
+
+		public int Others { get; private set; }
+
+		public readonly int All => Own + Others;
+
+		public void Add(bool otherParty)
+		{
+			if (otherParty)
+			{
+				Others++;
+			}
+			else
+			{
+				Own++;
+			}
+		}
+
+		public readonly int Of(bool otherParty) => otherParty ? Others : Own;
 	}
 
 	private sealed class Member

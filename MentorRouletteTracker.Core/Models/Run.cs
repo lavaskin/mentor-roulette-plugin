@@ -17,6 +17,11 @@ public enum RunStatus
 public sealed record Run
 {
 	/// <summary>
+	/// The most deaths the site takes. A run with more is sent without them.
+	/// </summary>
+	public const int MaxDeaths = 999;
+
+	/// <summary>
 	/// The plugin run id: made for each run, so a retried upload can't log it twice
 	/// </summary>
 	public required Guid Id { get; init; }
@@ -39,6 +44,13 @@ public sealed record Run
 	public required bool Replacement { get; init; }
 
 	public required int Wipes { get; init; }
+
+	/// <summary>
+	/// The deaths of everyone in the duty, the player included: 0 to <see cref="MaxDeaths"/>. Null in a run recorded
+	/// before the plugin counted them, or with more than the site takes. Not <c>required</c>, so the runs those
+	/// versions saved still read.
+	/// </summary>
+	public int? Deaths { get; init; }
 
 	/// <summary>
 	/// The player's own time in the duty: whole seconds, at least 1
