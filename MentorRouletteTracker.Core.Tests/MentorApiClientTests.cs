@@ -22,7 +22,7 @@ public class MentorApiClientTests
 	public async Task LoggingARun_SendsWhatARunNeeds_AndNothingElse()
 	{
 		_handler.Respond(HttpStatusCode.Created, """{ "mentorRouletteLogId": 5123, "runNumber": 123, "dutyName": "The Vault", "durationDropped": false }""");
-		var run = Runs.Make(hour: 3) with { Replacement = true, Wipes = 2, DurationSeconds = 1930, Status = RunStatus.Failed, FailedReason = "x" };
+		var run = Runs.Make(hour: 3) with { Replacement = true, Wipes = 2, Deaths = 14, DurationSeconds = 1930, Status = RunStatus.Failed, FailedReason = "x" };
 
 		var result = await _client.LogRunAsync(Connection, run, CancellationToken.None);
 
@@ -36,7 +36,7 @@ public class MentorApiClientTests
 
 		using var body = JsonDocument.Parse(request.Body!);
 		Assert.Equal(
-			["pluginRunId", "gameContentId", "gameClassJobId", "completed", "replacement", "wipes", "durationSeconds", "datePlayed"],
+			["pluginRunId", "gameContentId", "gameClassJobId", "completed", "replacement", "wipes", "deaths", "durationSeconds", "datePlayed"],
 			body.RootElement.EnumerateObject().Select(property => property.Name));
 		Assert.Equal(run.Id, body.RootElement.GetProperty("pluginRunId").GetGuid());
 		Assert.Equal(421, body.RootElement.GetProperty("gameContentId").GetInt32());
@@ -44,8 +44,20 @@ public class MentorApiClientTests
 		Assert.True(body.RootElement.GetProperty("completed").GetBoolean());
 		Assert.True(body.RootElement.GetProperty("replacement").GetBoolean());
 		Assert.Equal(2, body.RootElement.GetProperty("wipes").GetInt32());
+		Assert.Equal(14, body.RootElement.GetProperty("deaths").GetInt32());
 		Assert.Equal(1930, body.RootElement.GetProperty("durationSeconds").GetInt32());
 		Assert.Equal("2026-11-05T03:00:00Z", body.RootElement.GetProperty("datePlayed").GetString());
+	}
+
+	[Fact]
+	public async Task ARunWithoutDeaths_SendsThemAsNull()
+	{
+		_handler.Respond(HttpStatusCode.Created, """{ "mentorRouletteLogId": 5123, "runNumber": 123 }""");
+
+		await _client.LogRunAsync(Connection, Runs.Make(hour: 1) with { Deaths = null }, CancellationToken.None);
+
+		using var body = JsonDocument.Parse(_handler.Requests.Single().Body!);
+		Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("deaths").ValueKind);
 	}
 
 	[Fact]
