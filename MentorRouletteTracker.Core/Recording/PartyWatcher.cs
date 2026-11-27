@@ -3,9 +3,9 @@ using MentorRouletteTracker.Core.Models;
 namespace MentorRouletteTracker.Core.Recording;
 
 /// <summary>
-/// Counts the party's deaths, and says when it wipes, from what each frame shows of it and the game's wipe message. The game only sends its
-/// message when it resets the whole party (trials and raids), so in dungeons and guildhests, where each player returns
-/// to the start themselves, the party is all there is.
+/// Counts the party's deaths, and says when it wipes, from what each frame shows of it and the game's wipe message.
+/// The game only sends its message when it resets the whole party (trials and raids), so in dungeons and guildhests,
+/// where each player returns to the start themselves, the party is all there is.
 /// <list type="bullet">
 /// <item>
 /// <b>A fight</b> starts when anyone alive is in combat, and is over once nobody alive is. Someone who returned to the
