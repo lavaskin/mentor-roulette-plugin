@@ -1,6 +1,5 @@
 using MentorRouletteTracker.Core.Api;
 using MentorRouletteTracker.Core.Models;
-using MentorRouletteTracker.Core.Uploading;
 
 namespace MentorRouletteTracker.Core.Tests;
 
@@ -47,11 +46,16 @@ internal sealed class FakeApi : IMentorApi
 	}
 }
 
-internal sealed class FakeSettings : IUploadSettings
+internal static class ConnectedSettings
 {
-	public string ServerAddress { get; set; } = "https://mentor.example";
-	public string? Token { get; set; } = "mrt_token";
-	public bool AutoUpload { get; set; } = true;
+	public static Settings Make()
+	{
+		return new Settings
+		{
+			ServerAddress = "https://mentor.example",
+			Token = "mrt_token",
+		};
+	}
 }
 
 internal static class Runs

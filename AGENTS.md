@@ -15,10 +15,10 @@ A Dalamud plugin (FINAL FANTASY XIV) that records each Mentor Roulette run and l
 | `MentorRouletteTracker.Core.Tests` | xUnit tests for `Core` |
 
 - **`Core`'s folders,** each its own namespace (`Core.Models`, and so on):
-  - `Models`: plain records and enums (`Run`, `InProgressRun`, `RunOutcome`, `AcceptedPop`, `Party`, `RunNote`), one type per file, with its enum beside it.
+  - `Models`: plain records and enums (`Run`, `InProgressRun`, `RunOutcome`, `AcceptedPop`, `Party`, `RunNote`), and `Settings`, which the plugin's `Configuration` builds on. One type per file, with its enum beside it.
   - `Recording`: `RunRecorder`, `PartyWatcher` (wipes and deaths), `PartyReading` (which party slots count).
   - `Storage`: `RunLog` (in memory), `RunStore` (on disk), `JsonFile` (how each file's written), `BackgroundSaver`.
-  - `Uploading`: `RunKeeper`, `Uploader`, `IUploadSettings`.
+  - `Uploading`: `RunKeeper`, `Uploader`.
   - `Api`: talking to the site.
   - `Text`: how things are written (`Duration`, `DateText`, `ChatLine`, `LogLine`, `Milestones`, `Names`).
 - **How it fits together:**

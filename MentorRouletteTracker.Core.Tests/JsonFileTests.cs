@@ -1,3 +1,4 @@
+using MentorRouletteTracker.Core.Models;
 using MentorRouletteTracker.Core.Storage;
 
 namespace MentorRouletteTracker.Core.Tests;
@@ -28,18 +29,60 @@ public sealed class JsonFileTests : IDisposable
 			Token = "mrt_abc",
 			Username = "Lava",
 			AutoUpload = false,
+			ChatLine = false,
+			ChatLinePace = false,
 		};
 
 		JsonFile.Write(_path, settings);
 		var read = JsonFile.Read<Settings>(_path, _warnings.Add);
 
-		Assert.NotNull(read);
-		Assert.Equal(settings.ServerAddress, read.ServerAddress);
-		Assert.Equal(settings.Token, read.Token);
-		Assert.Equal(settings.Username, read.Username);
-		Assert.Equal(settings.AutoUpload, read.AutoUpload);
-		Assert.Equal(settings.ChatLine, read.ChatLine);
+		Assert.Equivalent(settings, read, strict: true);
 		Assert.Empty(_warnings);
+	}
+
+	[Fact]
+	public void SettingsSavedByADevBuild_StillRead()
+	{
+		File.WriteAllText(_path, """
+			{
+			  "version": 1,
+			  "serverAddress": "http://localhost:4200",
+			  "token": "mrt_abc",
+			  "username": "Lava",
+			  "autoUpload": false,
+			  "chatLine": false,
+			  "chatLinePace": false
+			}
+			""");
+
+		var read = JsonFile.Read<Settings>(_path, _warnings.Add);
+
+		Assert.Equivalent(new Settings
+		{
+			ServerAddress = "http://localhost:4200",
+			Token = "mrt_abc",
+			Username = "Lava",
+			AutoUpload = false,
+			ChatLine = false,
+			ChatLinePace = false,
+		}, read, strict: true);
+		Assert.Empty(_warnings);
+	}
+
+	[Fact]
+	public void SettingsSavedBeforeThePaceSetting_ReadWithItOn()
+	{
+		File.WriteAllText(_path, """
+			{
+			  "version": 1,
+			  "serverAddress": "https://mentorroulette.com",
+			  "username": "Lava",
+			  "autoUpload": true,
+			  "chatLine": true
+			}
+			""");
+
+		Assert.True(JsonFile.Read<Settings>(_path, _warnings.Add)!.ChatLinePace);
 	}
 
 	[Fact]
@@ -70,15 +113,5 @@ public sealed class JsonFileTests : IDisposable
 
 		Assert.Null(JsonFile.Read<Settings>(_path, _warnings.Add)!.Token);
 		Assert.Equal(["settings.json"], Directory.GetFiles(_directory).Select(Path.GetFileName));
-	}
-
-	private sealed class Settings
-	{
-		public int Version { get; set; } = 1;
-		public string ServerAddress { get; set; } = "https://mentorroulette.com";
-		public string? Token { get; set; }
-		public string? Username { get; set; }
-		public bool AutoUpload { get; set; } = true;
-		public bool ChatLine { get; set; } = true;
 	}
 }

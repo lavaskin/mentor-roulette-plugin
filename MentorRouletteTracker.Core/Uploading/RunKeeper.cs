@@ -8,11 +8,11 @@ public sealed class RunKeeper
 {
 	private readonly RunLog _log;
 	private readonly Uploader _uploader;
-	private readonly IUploadSettings _settings;
+	private readonly Settings _settings;
 
 	private readonly Dictionary<Guid, LoggedRun?> _ending = [];
 
-	public RunKeeper(RunLog log, Uploader uploader, IUploadSettings settings)
+	public RunKeeper(RunLog log, Uploader uploader, Settings settings)
 	{
 		_log = log;
 		_uploader = uploader;
@@ -22,7 +22,7 @@ public sealed class RunKeeper
 
 	public event Action<IReadOnlyList<LoggedRun>>? WaitingRunsLogged;
 
-	public static ApiConnection? ConnectionFor(IUploadSettings settings)
+	public static ApiConnection? ConnectionFor(Settings settings)
 	{
 		return string.IsNullOrEmpty(settings.Token) ? null : new ApiConnection(settings.ServerAddress, settings.Token);
 	}
