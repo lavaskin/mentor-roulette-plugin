@@ -34,9 +34,12 @@ public static class LogLine
 			RunNote.FightStarted => "Fight started",
 			RunNote.FightOver { Reason: FightEnd.GameWipeMessage } => "Fight over: the game's wipe message",
 			RunNote.FightOver => "Fight over: nobody alive is in combat",
-			RunNote.MemberDied died => $"A party member died: {died.Dead} of {died.Of} dead, "
-				+ (died.DiedThisFight is { } diedThisFight ? $"{diedThisFight} of {died.Of} have died this fight" : "outside a fight"),
-			RunNote.MemberUp up => $"A party member is up again: {up.Dead} of {up.Of} dead",
+			RunNote.MemberDied { OtherParty: false } died => $"A party member died: {died.Dead} of {died.Of} dead, " + DiedThisFight(died),
+			RunNote.MemberDied died => $"A member of another party died: {died.Dead} of {died.Of} in the alliance dead, " + DiedThisFight(died),
+			RunNote.MemberUp { OtherParty: false } up => $"A party member is up again: {up.Dead} of {up.Of} dead",
+			RunNote.MemberUp up => $"A member of another party is up again: {up.Dead} of {up.Of} in the alliance dead",
+			RunNote.DeathsCounted counted => $"Deaths this run: {counted.Number}",
+			RunNote.TooManyDeaths tooMany => $"{Count(tooMany.Deaths, "death")} is more than the site takes ({Run.MaxDeaths}), so the run is sent without them",
 			RunNote.Wiped { Source: WipeSource.Party } wiped => $"Wipe {wiped.Number}: everyone in the party died this fight ({wiped.Members} of {wiped.Members})",
 			RunNote.Wiped wiped => $"Wipe {wiped.Number}: the game's wipe message",
 			RunNote.WipeSkipped { Source: WipeSource.Party } skipped => $"Everyone in the party died this fight: already counted from the game's wipe message {Seconds(skipped.After)} ago",
@@ -60,11 +63,17 @@ public static class LogLine
 		return party.NotHere > 0 ? line + $", {party.NotHere} not here" : line;
 	}
 
+	private static string DiedThisFight(RunNote.MemberDied died)
+	{
+		return died.DiedThisFight is { } diedThisFight ? $"{diedThisFight} of {died.Of} have died this fight" : "outside a fight";
+	}
+
 	private static string EndedLine(RunNote.Ended ended, string duty)
 	{
 		var run = ended.Run;
 		var how = run.Cleared ? "cleared" : ended.WhileAway ? "not cleared (not back after logging out or a crash)" : "not cleared (left)";
-		return $"Run ended: {duty}, {how}, {Count(run.Wipes, "wipe")}, {Duration.Format(run.DurationSeconds)}";
+		var deaths = run.Deaths is { } count ? $", {Count(count, "death")}" : "";
+		return $"Run ended: {duty}, {how}, {Count(run.Wipes, "wipe")}{deaths}, {Duration.Format(run.DurationSeconds)}";
 	}
 
 	private static string TrueOrFalse(bool value) => value ? "true" : "false";

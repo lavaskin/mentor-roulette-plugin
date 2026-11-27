@@ -940,6 +940,212 @@ public class RunRecorderTests
 
 	private static PartyMember Dead(uint id) => new(id, Dead: true, InCombat: false);
 
+	// Deaths
+
+	/// <summary>
+	/// The tank dies and is raised, from <paramref name="from"/>: one death
+	/// </summary>
+	private void TankDies(int from, RunRecorder? recorder = null)
+	{
+		recorder ??= _recorder;
+		recorder.PartySeen(Four(dead: false, inCombat: true), At(from));
+		recorder.PartySeen(new Party([Dead(1), Fighting(2), Fighting(3), Fighting(4)]), At(from + 5));
+		recorder.PartySeen(Four(dead: false, inCombat: true), At(from + 10));
+	}
+
+	[Fact]
+	public void TheDeaths_AreInTheRun()
+	{
+		Enter();
+		TankDies(100);
+		TankDies(200);
+		DungeonWipe(300);
+
+		Assert.Equal(6, _recorder.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void ARunNobodyDiedIn_HasNoDeaths_NotNone()
+	{
+		Enter();
+
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void PartySeen_SaysWhenItCountedADeath_SoTheRunsSaved()
+	{
+		Enter();
+		_recorder.PartySeen(Four(dead: false, inCombat: true), At(100));
+
+		Assert.True(_recorder.PartySeen(new Party([Dead(1), Fighting(2), Fighting(3), Fighting(4)]), At(105)));
+		Assert.False(_recorder.PartySeen(new Party([Dead(1), Fighting(2), Fighting(3), Fighting(4)]), At(106)));
+		Assert.Equal(1, _recorder.Snapshot(At(107))!.Deaths);
+	}
+
+	[Fact]
+	public void Deaths_CountForNothing_BeforeARun()
+	{
+		TankDies(0);
+		Enter(popAt: 20, arriveAt: 30);
+
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void Deaths_CountForNothing_WhileAway()
+	{
+		Enter();
+		_recorder.LoggedOut(At(100));
+		TankDies(110);
+
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
+		_recorder.LoadedIn(At(205));
+
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void Deaths_CountForNothing_AfterTheRunEnds()
+	{
+		Enter();
+		var run = _recorder.Completed(At(100));
+
+		TankDies(110);
+		_recorder.Arrived(0, throughDutyFinder: false, At(130));
+		Enter(popAt: 200, arriveAt: 230);
+
+		Assert.Equal(0, run!.Deaths);
+		Assert.Equal(0, _recorder.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void Deaths_CountForNothing_AfterARestore_UntilTheyreBack()
+	{
+		Enter();
+		var saved = _recorder.Snapshot(At(100));
+		var restarted = new RunRecorder();
+		restarted.Restore(saved!);
+
+		TankDies(110, restarted);
+
+		Assert.Equal(0, restarted.Snapshot(At(130))!.Deaths);
+	}
+
+	[Fact]
+	public void TheDeathsSoFar_SurviveADisconnectAndReturn_WithoutCountingTheDeadAgain()
+	{
+		Enter();
+		TankDies(100);
+		_recorder.PartySeen(new Party([Fighting(1), Dead(2), Fighting(3), Fighting(4)]), At(150));
+		_recorder.LoggedOut(At(160));
+		_recorder.Arrived(Vault, throughDutyFinder: true, At(200));
+		_recorder.LoadedIn(At(205));
+
+		// The healer's still lying dead, and the DPS died while the player was away
+		_recorder.PartySeen(new Party([Fighting(1), Dead(2), Dead(3), Fighting(4)]), At(210));
+		_recorder.PartySeen(new Party([Dead(1), Dead(2), Dead(3), Fighting(4)]), At(220));
+
+		Assert.Equal(3, _recorder.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void TheDeathsSoFar_SurviveACrashAndRestart_WithoutCountingTheDeadAgain()
+	{
+		Enter();
+		TankDies(100);
+		_recorder.PartySeen(new Party([Fighting(1), Dead(2), Fighting(3), Fighting(4)]), At(150));
+		var saved = _recorder.Snapshot(At(160));
+		Assert.Equal(2, saved!.Deaths);
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(300));
+		restarted.LoadedIn(At(305));
+		restarted.PartySeen(new Party([Fighting(1), Dead(2), Fighting(3), Fighting(4)]), At(310));
+		restarted.PartySeen(new Party([Fighting(1), Dead(2), Dead(3), Fighting(4)]), At(320));
+
+		Assert.Equal(3, restarted.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void TheDeathsSoFar_SurviveThePluginBeingTurnedOff()
+	{
+		Enter();
+		TankDies(100);
+		var saved = _recorder.TurnedOff(At(130));
+
+		var restarted = new RunRecorder();
+		restarted.Restore(saved!);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(300));
+		restarted.LoadedIn(At(305));
+		TankDies(400, restarted);
+
+		Assert.Equal(2, restarted.Completed(At(1000))!.Deaths);
+	}
+
+	[Fact]
+	public void ARunSavedWithoutDeaths_CarriesOnWithout_RatherThanSendPartOfThem()
+	{
+		// Saved by a version that didn't count them, then updated mid-run
+		Enter();
+		var saved = _recorder.Snapshot(At(100))! with { Deaths = null };
+
+		var restarted = new RunRecorder();
+		var notes = Notes(restarted);
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(300));
+		restarted.LoadedIn(At(305));
+		Assert.False(restarted.PartySeen(Four(dead: false, inCombat: true), At(400)));
+		Assert.False(restarted.PartySeen(new Party([Dead(1), Fighting(2), Fighting(3), Fighting(4)]), At(405)));
+
+		Assert.Null(restarted.Snapshot(At(410))!.Deaths);
+		Assert.Null(restarted.Completed(At(1000))!.Deaths);
+		Assert.DoesNotContain(notes, note => note is RunNote.DeathsCounted);
+	}
+
+	/// <summary>
+	/// A run with <paramref name="deaths"/> deaths so far, restored and finished
+	/// </summary>
+	private (Run Run, List<RunNote> Notes) RunWithDeaths(int deaths)
+	{
+		Enter();
+		var saved = _recorder.Snapshot(At(100))! with { Deaths = deaths };
+		var restarted = new RunRecorder();
+		var notes = Notes(restarted);
+		restarted.Restore(saved);
+		restarted.Arrived(Vault, throughDutyFinder: true, At(300));
+		restarted.LoadedIn(At(305));
+		return (restarted.Completed(At(1000))!, notes);
+	}
+
+	[Fact]
+	public void TheMostDeathsTheSiteTakes_AreSent()
+	{
+		Assert.Equal(999, RunWithDeaths(999).Run.Deaths);
+	}
+
+	[Fact]
+	public void MoreDeathsThanTheSiteTakes_AreLeftOut_AndSaySo()
+	{
+		var (run, notes) = RunWithDeaths(1000);
+
+		Assert.Null(run.Deaths);
+		Assert.Contains(new RunNote.TooManyDeaths(1000), notes);
+	}
+
+	[Fact]
+	public void Deaths_AreNotedWithTheRunsCount_OnceAFrame()
+	{
+		Enter();
+		TankDies(100);
+		var notes = Notes(_recorder);
+
+		DungeonWipe(200);
+
+		Assert.Equal([new RunNote.DeathsCounted(5)], notes.OfType<RunNote.DeathsCounted>());
+	}
+
 	// What it notes for the log
 
 	private List<RunNote> Notes(RunRecorder recorder)
@@ -967,6 +1173,7 @@ public class RunRecorderTests
 				new RunNote.Started(Vault, Replacement: false),
 				new RunNote.JobKnown(Paladin),
 				new RunNote.ClockStarted(ClockStartReason.DutyCommenced),
+				new RunNote.DeathsCounted(4),
 				new RunNote.Wiped(1, WipeSource.Party, 4),
 				new RunNote.Ended(run!, WhileAway: false),
 			],

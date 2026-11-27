@@ -20,6 +20,7 @@ public class PartyWatcherTests
 	private readonly PartyWatcher _watcher = new();
 	private readonly List<WipeSource> _wipes = [];
 	private readonly List<RunNote> _notes = [];
+	private int _deaths;
 
 	public PartyWatcherTests()
 	{
@@ -39,7 +40,9 @@ public class PartyWatcherTests
 	/// <returns>Whether this frame counted a wipe</returns>
 	private bool See(double second, params PartyMember[] members)
 	{
-		if (_watcher.Seen(new Party(members), At(second)) is var (source, _))
+		var frame = _watcher.Seen(new Party(members), At(second));
+		_deaths += frame.Deaths;
+		if (frame.Wipe is { } source)
 		{
 			_wipes.Add(source);
 			return true;
@@ -312,6 +315,142 @@ public class PartyWatcherTests
 		See(150, Dead(Tank), Dead(Healer), Dead(Dps), Dead(Dps2));
 
 		Assert.Equal(2, _wipes.Count);
+	}
+
+	// Deaths
+
+	[Fact]
+	public void AMemberDying_IsOneDeath_HoweverLongTheyLieDead()
+	{
+		AllFighting(0);
+		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+
+		for (var second = 11; second < 60; second++)
+		{
+			See(second, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		}
+
+		Assert.Equal(1, _deaths);
+	}
+
+	[Fact]
+	public void DyingBeingRaisedAndDyingAgain_IsTwoDeaths()
+	{
+		AllFighting(0);
+		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(15, Fighting(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(20, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+
+		Assert.Equal(2, _deaths);
+	}
+
+	[Fact]
+	public void ADeathOutsideAFight_Counts()
+	{
+		See(0, Idle(Tank), Idle(Healer));
+		See(10, Dead(Tank), Idle(Healer));
+
+		Assert.Equal(1, _deaths);
+	}
+
+	[Fact]
+	public void AWipeOfFour_IsFourDeaths_AsOneWipe()
+	{
+		AllFighting(0);
+		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(20, Dead(Tank), Dead(Healer), Dead(Dps), Dead(Dps2));
+
+		Assert.Equal(4, _deaths);
+		Assert.Single(_wipes);
+	}
+
+	[Fact]
+	public void TheSameMemberTwiceInAFrame_DiesOnce()
+	{
+		See(0, Fighting(Tank), Fighting(Healer), Fighting(Healer));
+		See(10, Fighting(Tank), Dead(Healer), Dead(Healer));
+
+		Assert.Equal(1, _deaths);
+	}
+
+	[Fact]
+	public void InAnAllianceRaid_All24Deaths_Count()
+	{
+		See(0, Alliance(Fighting, Fighting));
+		See(10, Alliance(Fighting, Dead));
+		Assert.Equal(16, _deaths);
+
+		See(20, Alliance(Dead, Dead));
+		Assert.Equal(24, _deaths);
+	}
+
+	[Fact]
+	public void FirstSeenDead_IsntADeath_UntilTheyreUpAndDieAgain()
+	{
+		// Joined as a replacement, or back from a disconnect, with the tank lying dead
+		See(0, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		Assert.Equal(0, _deaths);
+
+		See(20, Fighting(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(30, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		Assert.Equal(1, _deaths);
+	}
+
+	[Fact]
+	public void AReplacementInTheSameSlot_IsSomeoneNew_ByTheirId()
+	{
+		AllFighting(0);
+
+		// The tank leaves alive, and their replacement loads in dead in the same slot
+		See(10, Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(20, Dead(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		Assert.Equal(0, _deaths);
+
+		See(30, Fighting(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(40, Dead(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		Assert.Equal(1, _deaths);
+	}
+
+	[Fact]
+	public void AReplacementTakingOverADeadMembersSlot_IsntTheirRaise()
+	{
+		AllFighting(0);
+		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+
+		// The tank leaves while dead, and their replacement arrives alive in the same slot, then dies
+		See(20, Fighting(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(30, Dead(Newcomer), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+
+		Assert.Equal(2, _deaths);
+		Assert.DoesNotContain(_notes, note => note is RunNote.MemberUp);
+	}
+
+	[Fact]
+	public void AMemberBackDeadAfterBeingAway_IsntCountedAgain()
+	{
+		AllFighting(0);
+		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+
+		// The tank's slot is left out for a while (disconnected, or not loaded), and comes back still dead
+		See(20, Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+		See(30, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+
+		Assert.Equal(1, _deaths);
+	}
+
+	[Fact]
+	public void Reset_SeesEveryoneAfresh_SoTheDeadArentCountedAgain()
+	{
+		AllFighting(0);
+		See(10, Dead(Tank), Fighting(Healer), Fighting(Dps), Fighting(Dps2));
+
+		_watcher.Reset();
+		See(20, Dead(Tank), Dead(Healer), Fighting(Dps), Fighting(Dps2));
+		Assert.Equal(1, _deaths);
+
+		See(30, Dead(Tank), Dead(Healer), Dead(Dps), Fighting(Dps2));
+		Assert.Equal(2, _deaths);
 	}
 
 	// Who's in the party
@@ -716,15 +855,28 @@ public class PartyWatcherTests
 	}
 
 	[Fact]
-	public void OnlyYourOwnPartysDeaths_AreNoted_InAnAlliance()
+	public void InAnAlliance_YourOwnPartysDeaths_AreNotedWithItsCounts_AndTheOthersWithTheAlliances()
 	{
 		See(0, Alliance(Fighting, Fighting));
 		See(10, Alliance(Fighting, Dead));
-		Assert.DoesNotContain(_notes, note => note is RunNote.MemberDied);
+		Assert.Equal(16, _notes.OfType<RunNote.MemberDied>().Count());
+		Assert.All(_notes.OfType<RunNote.MemberDied>(), died => Assert.Equal(new RunNote.MemberDied(16, 16, 24, OtherParty: true), died));
 
+		_notes.Clear();
 		See(20, Alliance(Dead, Dead));
 		Assert.Equal(8, _notes.OfType<RunNote.MemberDied>().Count());
 		Assert.All(_notes.OfType<RunNote.MemberDied>(), died => Assert.Equal(new RunNote.MemberDied(8, 8, 8), died));
+	}
+
+	[Fact]
+	public void InAnAlliance_TheOtherPartiesMembersUpAgain_AreNoted()
+	{
+		See(0, Alliance(Fighting, Fighting));
+		See(10, Alliance(Fighting, Dead));
+		See(20, Alliance(Fighting, Fighting));
+
+		Assert.Equal(16, _notes.OfType<RunNote.MemberUp>().Count());
+		Assert.Equal(new RunNote.MemberUp(0, 24, OtherParty: true), _notes.OfType<RunNote.MemberUp>().Last());
 	}
 
 	[Fact]
@@ -763,6 +915,7 @@ public class PartyWatcherTests
 		var nextId = Newcomer;
 		var everDead = new HashSet<uint>();
 		var deathSeenSinceWipe = false;
+		var deaths = 0;
 
 		for (var frame = 0; frame < 5000; frame++)
 		{
@@ -788,7 +941,9 @@ public class PartyWatcherTests
 			}
 
 			var members = party.Values.ToArray();
-			var deathThisFrame = members.Any(member => member.Dead && before.TryGetValue(member.Id, out var was) && !was.Dead);
+			var died = members.Count(member => member.Dead && before.TryGetValue(member.Id, out var was) && !was.Dead);
+			var deathThisFrame = died > 0;
+			deaths += frame == 0 ? 0 : died;
 			deathSeenSinceWipe |= deathThisFrame;
 			foreach (var member in members.Where(member => member.Dead))
 			{
@@ -796,6 +951,7 @@ public class PartyWatcherTests
 			}
 
 			var wiped = See(frame, members);
+			Assert.True(deaths == _deaths, $"Frame {frame}: {_deaths} deaths counted, when members already seen went from alive to dead {deaths} times");
 
 			if (wiped)
 			{
@@ -813,5 +969,6 @@ public class PartyWatcherTests
 		}
 
 		Assert.NotEmpty(_wipes);
+		Assert.True(_deaths > _wipes.Count);
 	}
 }

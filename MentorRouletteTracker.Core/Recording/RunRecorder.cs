@@ -33,6 +33,11 @@ namespace MentorRouletteTracker.Core.Recording;
 /// game's wipe message. Only while the player's in the duty: the party's seen afresh each time they're in it, at the
 /// run's start and on coming back.
 /// </para>
+/// <para>
+/// Its deaths are the party's too, everyone in the duty included, counted by <see cref="PartyWatcher"/> in the same
+/// window. A run restored from a version that didn't count them carries on without them, rather than send part of the
+/// count. More than the site takes (<see cref="Run.MaxDeaths"/>) are left out of the run.
+/// </para>
 /// Not thread safe: the plugin calls it from the game's framework thread only.
 /// </summary>
 public sealed class RunRecorder
@@ -143,6 +148,7 @@ public sealed class RunRecorder
 				StartsOn = pop.InProgress ? ClockStart.LoadedIn : ClockStart.Commenced,
 				EnteredAt = at,
 				LastSeenAt = at,
+				Deaths = 0,
 			};
 			_party.Reset();
 			Note(new RunNote.Started(contentFinderConditionId, pop.InProgress));
@@ -200,18 +206,26 @@ public sealed class RunRecorder
 	}
 
 	/// <summary>
-	/// What one frame shows of the party, once the player's loaded in. Counts a wipe if it finished one.
+	/// What one frame shows of the party, once the player's loaded in. Counts its deaths, and a wipe if it finished
+	/// one.
 	/// </summary>
-	/// <returns>Whether it counted a wipe</returns>
+	/// <returns>Whether it counted a death or a wipe</returns>
 	public bool PartySeen(Party party, DateTime at)
 	{
-		if (!InDuty || _party.Seen(party, at) is not var (source, members))
+		if (!InDuty)
 		{
 			return false;
 		}
 
-		CountWipe(source, members);
-		return true;
+		var frame = _party.Seen(party, at);
+		var counted = CountDeaths(frame.Deaths);
+		if (frame.Wipe is { } source)
+		{
+			CountWipe(source, frame.WipeMembers);
+			counted = true;
+		}
+
+		return counted;
 	}
 
 	/// <summary>
@@ -230,6 +244,19 @@ public sealed class RunRecorder
 		{
 			CountWipe(source, 0);
 		}
+	}
+
+	private bool CountDeaths(int deaths)
+	{
+		var current = _current!;
+		if (deaths == 0 || current.Deaths is not { } before)
+		{
+			return false;
+		}
+
+		current.Deaths = before + deaths;
+		Note(new RunNote.DeathsCounted(before + deaths));
+		return true;
 	}
 
 	private void CountWipe(WipeSource source, int members)
@@ -282,6 +309,7 @@ public sealed class RunRecorder
 			GameClassJobId = current.GameClassJobId,
 			Replacement = current.Replacement,
 			Wipes = current.Wipes,
+			Deaths = current.Deaths,
 			ElapsedSeconds = elapsed.TotalSeconds,
 			EnteredAt = current.EnteredAt,
 			LastSeenAt = current.Away ? current.LastSeenAt : at,
@@ -323,6 +351,7 @@ public sealed class RunRecorder
 			GameClassJobId = run.GameClassJobId,
 			Replacement = run.Replacement,
 			Wipes = run.Wipes,
+			Deaths = run.Deaths,
 			Elapsed = TimeSpan.FromSeconds(run.ElapsedSeconds),
 			Away = true,
 			StartsOn = run.AwaitingDutyCommenced ? ClockStart.Commenced : ClockStart.LoadedIn,
@@ -356,6 +385,13 @@ public sealed class RunRecorder
 		StopClock(current, endedAt);
 		var enteredAt = current.EnteredAt ?? endedAt - current.Elapsed;
 
+		var deaths = current.Deaths;
+		if (deaths > Run.MaxDeaths)
+		{
+			Note(new RunNote.TooManyDeaths(deaths.Value));
+			deaths = null;
+		}
+
 		var run = new Run
 		{
 			Id = current.Id,
@@ -364,6 +400,7 @@ public sealed class RunRecorder
 			Cleared = cleared,
 			Replacement = current.Replacement,
 			Wipes = current.Wipes,
+			Deaths = deaths,
 			DurationSeconds = Math.Max(1, (int)current.Elapsed.TotalSeconds),
 			DatePlayed = DateTime.SpecifyKind(enteredAt, DateTimeKind.Utc),
 		};
@@ -410,6 +447,11 @@ public sealed class RunRecorder
 		public uint GameClassJobId { get; set; }
 		public required bool Replacement { get; init; }
 		public int Wipes { get; set; }
+
+		/// <summary>
+		/// The party's deaths so far, or null in a run restored from a version that didn't count them
+		/// </summary>
+		public int? Deaths { get; set; }
 
 		/// <summary>
 		/// Time in the duty before <see cref="RunningSince"/>

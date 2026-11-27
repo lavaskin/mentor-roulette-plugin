@@ -20,7 +20,7 @@ namespace MentorRouletteTracker;
 /// <summary>
 /// Turns the game's events into <see cref="RunRecorder"/>'s, on the framework thread, and saves the run in progress
 /// on every change and every minute, so a crash loses at most a minute of its time. While the player's in a run's duty
-/// and loaded in, it reads the party every frame (<see cref="PartyReader"/>) for the wipes. What the recorder notes
+/// and loaded in, it reads the party every frame (<see cref="PartyReader"/>) for the wipes and deaths. What the recorder notes
 /// goes in Dalamud's log, at Information during a run, so it's there at the default level when a run's recorded wrong.
 /// </summary>
 internal sealed unsafe class RunWatcher : IDisposable
@@ -318,9 +318,10 @@ internal sealed unsafe class RunWatcher : IDisposable
 
 	/// <summary>
 	/// Reads the party and hands it to the recorder. A failure is logged once a run, and doesn't stop the rest of the
-	/// frame (the job, the save), so the run's still recorded, with its wipes from the game's wipe message alone.
+	/// frame (the job, the save), so the run's still recorded, with its wipes from the game's wipe message alone, and
+	/// no deaths counted while it fails.
 	/// </summary>
-	/// <returns>Whether it counted a wipe</returns>
+	/// <returns>Whether it counted a death or a wipe</returns>
 	private bool PartySeen(DateTime now)
 	{
 		try
@@ -332,7 +333,7 @@ internal sealed unsafe class RunWatcher : IDisposable
 			if (!_partyFailed)
 			{
 				_partyFailed = true;
-				_log.Warning(exception, "Couldn't read the party, so wipes only count from the game's wipe message while it fails (logged once a run)");
+				_log.Warning(exception, "Couldn't read the party, so wipes only count from the game's wipe message, and deaths don't count, while it fails (logged once a run)");
 			}
 
 			return false;
