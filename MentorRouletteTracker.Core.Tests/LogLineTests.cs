@@ -30,8 +30,8 @@ public class LogLineTests
 
 	public static TheoryData<RunNote, string> Lines => new()
 	{
-		{ new RunNote.Popped(Replacement: false), "Mentor Roulette pop, as a replacement: no" },
-		{ new RunNote.Started(Gauntlet, Replacement: true), "Run started: The Heroes' Gauntlet (737), replacement yes" },
+		{ new RunNote.Popped(Replacement: false), "Mentor Roulette pop, as a replacement: false" },
+		{ new RunNote.Started(Gauntlet, Replacement: true), "Run started: The Heroes' Gauntlet (737), replacement true" },
 		{ new RunNote.ClockStarted(ClockStartReason.DutyCommenced), "Clock started: duty commenced" },
 		{ new RunNote.ClockStarted(ClockStartReason.LoadedIn), "Clock started: loaded in" },
 		{ new RunNote.ClockStarted(ClockStartReason.DutyHadStarted), "Clock started: the duty had started" },
@@ -59,7 +59,7 @@ public class LogLineTests
 		{ new RunNote.Dropped(Gauntlet, DropReason.PluginWasOff), "Run dropped: The Heroes' Gauntlet (737), the plugin was off for part of it and didn't see it cleared" },
 		{ new RunNote.Restored(Gauntlet, PluginWasOff: false), "A run in progress from before the plugin started: The Heroes' Gauntlet (737)" },
 		{ new RunNote.PopIgnored(), "A pop that isn't the Mentor Roulette: ignored" },
-		{ new RunNote.WipeIgnored(), "The game's wipe message, with no run in progress: ignored" },
+		{ new RunNote.WipeIgnored(), "The game's wipe message, not in a run's duty: ignored" },
 	};
 
 	[Theory]
@@ -73,7 +73,7 @@ public class LogLineTests
 	public void EveryKindOfNote_HasALineOfItsOwn()
 	{
 		// A note without a case would fall back to the record's own text, naming its type
-		var kinds = typeof(RunNote).GetNestedTypes().Where(type => type.IsSubclassOf(typeof(RunNote)));
+		var kinds = typeof(RunNote).GetNestedTypes().Where(type => type.IsSubclassOf(typeof(RunNote)) && !type.IsAbstract);
 		var covered = Lines.Select(row => ((RunNote)row[0]).GetType()).ToHashSet();
 
 		Assert.All(kinds, kind => Assert.Contains(kind, covered));

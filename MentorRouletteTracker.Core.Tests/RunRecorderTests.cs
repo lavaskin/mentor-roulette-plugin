@@ -1074,14 +1074,14 @@ public class RunRecorderTests
 	}
 
 	[Fact]
-	public void EventsWithNoRun_AreNotedAsDetail()
+	public void EventsWithNoRun_AreNotedAsIgnored()
 	{
 		var notes = Notes(_recorder);
 		_recorder.Popped(isMentorRoulette: false, inProgress: false, At(0));
 		_recorder.GameWiped(At(10));
 
 		Assert.Equal([new RunNote.PopIgnored(), new RunNote.WipeIgnored()], notes);
-		Assert.All(notes, note => Assert.True(note.Detail));
+		Assert.All(notes, note => Assert.IsAssignableFrom<RunNote.Ignored>(note));
 	}
 
 	[Fact]
@@ -1097,7 +1097,7 @@ public class RunRecorderTests
 	}
 
 	[Fact]
-	public void NothingDuringARun_IsDetail()
+	public void NothingDuringARun_IsIgnored()
 	{
 		var notes = Notes(_recorder);
 		Enter();
@@ -1108,6 +1108,6 @@ public class RunRecorderTests
 		_recorder.LoadedIn(At(305));
 		_recorder.Completed(At(400));
 
-		Assert.All(notes, note => Assert.False(note.Detail));
+		Assert.All(notes, note => Assert.False(note is RunNote.Ignored));
 	}
 }

@@ -39,7 +39,7 @@ public sealed class PartyWatcher
 	private bool _inFight;
 	private DateTime? _partyWipeAt;
 	private DateTime? _gameWipeAt;
-	private RunNote.PartyChanged? _size;
+	private RunNote.PartyChanged? _lastPartyNote;
 
 	/// <summary>
 	/// What it saw, for the log: the party's size, fights, deaths in the player's own party, and wipes skipped
@@ -61,14 +61,9 @@ public sealed class PartyWatcher
 		{
 			if (!_members.TryGetValue(seen.Id, out var member))
 			{
-				_members[seen.Id] = new Member
-				{
-					Frame = _frame,
-					Dead = seen.Dead,
-					Died = seen.Dead,
-					InCombat = !seen.Dead && seen.InCombat,
-					OtherParty = seen.OtherParty,
-				};
+				member = new Member { DiedThisFight = seen.Dead };
+				member.See(seen, _frame);
+				_members[seen.Id] = member;
 				continue;
 			}
 
@@ -79,7 +74,7 @@ public sealed class PartyWatcher
 
 			if (!member.Dead && seen.Dead)
 			{
-				member.Died = true;
+				member.DiedThisFight = true;
 				anyDied = true;
 				died += seen.OtherParty ? 0 : 1;
 			}
@@ -88,10 +83,7 @@ public sealed class PartyWatcher
 				up += seen.OtherParty ? 0 : 1;
 			}
 
-			member.Frame = _frame;
-			member.Dead = seen.Dead;
-			member.InCombat = !seen.Dead && seen.InCombat;
-			member.OtherParty = seen.OtherParty;
+			member.See(seen, _frame);
 		}
 
 		ForgetTheGone();
@@ -110,7 +102,7 @@ public sealed class PartyWatcher
 
 		NoteDeaths(died, up);
 
-		var wipe = anyDied && _members.Values.All(member => member.Dead || (member.Died && !member.InCombat))
+		var wipe = anyDied && _members.Values.All(member => member.Dead || (member.DiedThisFight && !member.InCombat))
 			? PartyWiped(at)
 			: null;
 
@@ -151,7 +143,7 @@ public sealed class PartyWatcher
 		_inFight = false;
 		_partyWipeAt = null;
 		_gameWipeAt = null;
-		_size = null;
+		_lastPartyNote = null;
 	}
 
 	private (WipeSource, int)? PartyWiped(DateTime at)
@@ -186,7 +178,7 @@ public sealed class PartyWatcher
 	{
 		foreach (var member in _members.Values)
 		{
-			member.Died = member.Dead;
+			member.DiedThisFight = member.Dead;
 		}
 	}
 
@@ -216,9 +208,9 @@ public sealed class PartyWatcher
 		var own = _members.Values.Count(member => !member.OtherParty);
 		var alliance = _members.Values.Any(member => member.OtherParty) ? _members.Count : 0;
 		var size = new RunNote.PartyChanged(own, alliance, notHere);
-		if (size != _size)
+		if (size != _lastPartyNote)
 		{
-			_size = size;
+			_lastPartyNote = size;
 			Noted?.Invoke(size);
 		}
 	}
@@ -235,7 +227,7 @@ public sealed class PartyWatcher
 
 		var own = _members.Values.Where(member => !member.OtherParty).ToList();
 		var dead = own.Count(member => member.Dead);
-		int? diedThisFight = _inFight ? own.Count(member => member.Died) : null;
+		int? diedThisFight = _inFight ? own.Count(member => member.DiedThisFight) : null;
 
 		for (var i = 0; i < died; i++)
 		{
@@ -253,20 +245,28 @@ public sealed class PartyWatcher
 		/// <summary>
 		/// The last frame they were seen in
 		/// </summary>
-		public int Frame { get; set; }
+		public int Frame { get; private set; }
 
-		public bool Dead { get; set; }
+		public bool Dead { get; private set; }
 
 		/// <summary>
 		/// Died this fight, or between fights, dead now
 		/// </summary>
-		public bool Died { get; set; }
+		public bool DiedThisFight { get; set; }
 
 		/// <summary>
 		/// Alive and in combat
 		/// </summary>
-		public bool InCombat { get; set; }
+		public bool InCombat { get; private set; }
 
-		public bool OtherParty { get; set; }
+		public bool OtherParty { get; private set; }
+
+		public void See(PartyMember seen, int frame)
+		{
+			Frame = frame;
+			Dead = seen.Dead;
+			InCombat = !seen.Dead && seen.InCombat;
+			OtherParty = seen.OtherParty;
+		}
 	}
 }

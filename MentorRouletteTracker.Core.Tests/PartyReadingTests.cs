@@ -19,7 +19,7 @@ public class PartyReadingTests
 	[Fact]
 	public void ThePartysSlots_AreItsMembers()
 	{
-		var party = PartyReading.Read([Slot(Player, inCombat: true), Slot(2), Slot(3, hp: 0), Slot(4, inCombat: true)], Me);
+		var party = PartyReading.Read([Slot(Player, inCombat: true), Slot(2), Slot(3, hp: 0), Slot(4, inCombat: true)], Me with { InCombat = true });
 
 		Assert.Equal(
 			[
@@ -96,11 +96,39 @@ public class PartyReadingTests
 	}
 
 	[Fact]
-	public void WithAParty_ThePlayerIsntAddedAgain()
+	public void ThePlayer_IsReadFromThemselves_NotTheirSlot()
 	{
-		var party = PartyReading.Read([Slot(2), Slot(3)], Me);
+		var party = PartyReading.Read([Slot(Player, hp: 0), Slot(2)], Me with { InCombat = true });
 
-		Assert.Equal([2u, 3u], party.Members.Select(member => member.Id));
+		Assert.Equal(
+			[
+				new PartyMember(Player, Dead: false, InCombat: true),
+				new PartyMember(2, Dead: false, InCombat: false),
+			],
+			party.Members);
+	}
+
+	[Fact]
+	public void ThePlayersSlotLaggingBehindThem_LeavesThemIn()
+	{
+		// Just after arriving, the party list can still have the player in the zone they left
+		var party = PartyReading.Read([Slot(Player, zone: Elsewhere), Slot(2, zone: Elsewhere)], Me);
+
+		Assert.Equal([Player], party.Members.Select(member => member.Id));
+		Assert.Equal(1, party.NotHere);
+	}
+
+	[Fact]
+	public void ThePlayerNotLoaded_IsReadFromTheirSlot()
+	{
+		var party = PartyReading.Read([Slot(Player, inCombat: true), Slot(2)], new PartySlot(0, 0, 0, Zone, InCombat: false));
+
+		Assert.Equal(
+			[
+				new PartyMember(Player, Dead: false, InCombat: true),
+				new PartyMember(2, Dead: false, InCombat: false),
+			],
+			party.Members);
 	}
 
 	[Fact]

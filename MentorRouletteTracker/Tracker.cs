@@ -102,7 +102,6 @@ internal sealed class Tracker : IDisposable
 
 		Uploader = new Uploader(Log, api, () => RunKeeper.ConnectionFor(Config));
 		Keeper = new RunKeeper(Log, Uploader, Config);
-		Uploader.Logged += OnUploaded;
 		Keeper.WaitingRunsLogged += OnWaitingRunsLogged;
 		_clientState.Login += OnLogin;
 
@@ -126,7 +125,6 @@ internal sealed class Tracker : IDisposable
 	{
 		_stopping.Cancel();
 		_clientState.Login -= OnLogin;
-		Uploader.Logged -= OnUploaded;
 		Keeper.WaitingRunsLogged -= OnWaitingRunsLogged;
 		_chat.RemoveChatLinkHandler();
 		Log.Changed -= _runsSaver.Request;
@@ -167,23 +165,16 @@ internal sealed class Tracker : IDisposable
 	}
 
 	/// <summary>
-	/// Each run the site logged, by any upload, on the thread that uploaded it
-	/// </summary>
-	private void OnUploaded(IReadOnlyList<(Guid RunId, LoggedRun Logged)> logged)
-	{
-		foreach (var (_, run) in logged)
-		{
-			_log.Information("Uploaded run as #{RunNumber}", run.RunNumber);
-		}
-	}
-
-	/// <summary>
-	/// Why the run that just ended wasn't uploaded, if it wasn't. Uploaded runs are logged as they upload.
+	/// The run that just ended's upload, or why it wasn't uploaded: the run's last step, at Information like the rest
+	/// of it
 	/// </summary>
 	private void LogOutcome(RunOutcome outcome)
 	{
 		switch (outcome.Kind)
 		{
+			case RunOutcomeKind.Logged:
+				_log.Information("Uploaded run as #{RunNumber}", outcome.RunNumber.GetValueOrDefault());
+				break;
 			case RunOutcomeKind.Refused:
 				_log.Warning("The site refused the run: {Reason}", outcome.Reason ?? "no reason given");
 				break;
@@ -217,6 +208,11 @@ internal sealed class Tracker : IDisposable
 	/// </summary>
 	private void OnWaitingRunsLogged(IReadOnlyList<LoggedRun> logged)
 	{
+		foreach (var run in logged)
+		{
+			_log.Debug("Uploaded a run that was waiting as #{RunNumber}", run.RunNumber);
+		}
+
 		Say(ChatLine.FormatWaiting(logged), afterLogin: true);
 	}
 

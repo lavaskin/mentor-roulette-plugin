@@ -16,11 +16,11 @@ public static class LogLine
 
 		return note switch
 		{
-			RunNote.Popped popped => $"Mentor Roulette pop, as a replacement: {Yes(popped.Replacement)}",
+			RunNote.Popped popped => $"Mentor Roulette pop, as a replacement: {TrueOrFalse(popped.Replacement)}",
 			RunNote.PopIgnored => "A pop that isn't the Mentor Roulette: ignored",
 			RunNote.Restored restored => $"A run in progress from before the plugin started: {Duty(restored.Duty)}"
 				+ (restored.PluginWasOff ? ", logged only if it's cleared, since the plugin was off for part of it" : ""),
-			RunNote.Started started => $"Run started: {Duty(started.Duty)}, replacement {Yes(started.Replacement)}",
+			RunNote.Started started => $"Run started: {Duty(started.Duty)}, replacement {TrueOrFalse(started.Replacement)}",
 			RunNote.BackInRun back => $"Back in the run: {Duty(back.Duty)}",
 			RunNote.ClockStarted clock => "Clock started: " + clock.Reason switch
 			{
@@ -41,7 +41,7 @@ public static class LogLine
 			RunNote.Wiped wiped => $"Wipe {wiped.Number}: the game's wipe message",
 			RunNote.WipeSkipped { Source: WipeSource.Party } skipped => $"Everyone in the party died this fight: already counted from the game's wipe message {Seconds(skipped.After)} ago",
 			RunNote.WipeSkipped skipped => $"The game's wipe message: already counted from the party {Seconds(skipped.After)} ago",
-			RunNote.WipeIgnored => "The game's wipe message, with no run in progress: ignored",
+			RunNote.WipeIgnored => "The game's wipe message, not in a run's duty: ignored",
 			RunNote.Ended ended => EndedLine(ended, Duty(ended.Run.GameContentId)),
 			RunNote.Dropped { Reason: DropReason.NeverLoadedIn } dropped => $"Run dropped: {Duty(dropped.Duty)}, never loaded in, so there's no job",
 			RunNote.Dropped dropped => $"Run dropped: {Duty(dropped.Duty)}, the plugin was off for part of it and didn't see it cleared",
@@ -67,7 +67,7 @@ public static class LogLine
 		return $"Run ended: {duty}, {how}, {Count(run.Wipes, "wipe")}, {Duration.Format(run.DurationSeconds)}";
 	}
 
-	private static string Yes(bool value) => value ? "yes" : "no";
+	private static string TrueOrFalse(bool value) => value ? "true" : "false";
 
 	private static string Seconds(TimeSpan span) => Duration.Format((int)Math.Max(0, span.TotalSeconds));
 

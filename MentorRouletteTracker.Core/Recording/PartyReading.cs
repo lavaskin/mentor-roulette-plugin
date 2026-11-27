@@ -15,17 +15,25 @@ public static class PartyReading
 	/// <summary>
 	/// The party in one frame, from the game's party and alliance slots. A slot counts if it's loaded (max HP above 0)
 	/// and in the player's zone. Anyone else is left out, so they don't have to die for a wipe: a disconnected member
-	/// keeps their slot, with whatever HP they had. With no party at all (the player's on their own), the party is
-	/// just the player.
+	/// keeps their slot, with whatever HP they had. The player is always in it, read from themselves rather than their
+	/// slot, which can lag behind them (its zone, say, just after arriving), so on their own the party is just them.
 	/// </summary>
 	/// <param name="slots">The party's slots, then the alliance's</param>
-	/// <param name="player">The player, as a slot, with the zone they're in</param>
+	/// <param name="player">
+	/// The player, as a slot, with the zone they're in. One that hasn't loaded (max HP 0) is read from their slot
+	/// instead, if they have one.
+	/// </param>
 	public static Party Read(IEnumerable<PartySlot> slots, PartySlot player)
 	{
 		var members = new List<PartyMember>();
 		var seen = new HashSet<uint>();
 		var notHere = 0;
-		var ownParty = false;
+
+		if (player.MaxHp > 0 && player.EntityId is not (0 or NoEntity))
+		{
+			seen.Add(player.EntityId);
+			members.Add(Member(player with { OtherParty = false }));
+		}
 
 		foreach (var slot in slots)
 		{
@@ -34,7 +42,6 @@ public static class PartyReading
 				continue;
 			}
 
-			ownParty |= !slot.OtherParty;
 			if (slot.MaxHp == 0 || slot.TerritoryType != player.TerritoryType)
 			{
 				notHere++;
@@ -42,11 +49,6 @@ public static class PartyReading
 			}
 
 			members.Add(Member(slot));
-		}
-
-		if (!ownParty && player.MaxHp > 0 && seen.Add(player.EntityId))
-		{
-			members.Insert(0, Member(player with { OtherParty = false }));
 		}
 
 		return new Party(members, notHere);

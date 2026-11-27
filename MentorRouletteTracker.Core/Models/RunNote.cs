@@ -8,17 +8,14 @@ public abstract record RunNote
 	/// <summary>
 	/// A game event with no run to apply to, which the log keeps only at its most detailed level
 	/// </summary>
-	public virtual bool Detail => false;
+	public abstract record Ignored : RunNote;
 
 	public sealed record Popped(bool Replacement) : RunNote;
 
 	/// <summary>
 	/// A pop for anything but the Mentor Roulette
 	/// </summary>
-	public sealed record PopIgnored : RunNote
-	{
-		public override bool Detail => true;
-	}
+	public sealed record PopIgnored : Ignored;
 
 	/// <summary>
 	/// A run saved before the plugin started, carried on until the player's seen
@@ -69,12 +66,9 @@ public abstract record RunNote
 	public sealed record WipeSkipped(WipeSource Source, TimeSpan After) : RunNote;
 
 	/// <summary>
-	/// The game's wipe message, with no run in progress to count it in
+	/// The game's wipe message while the player isn't in a run's duty: there's no run, or they're away from it
 	/// </summary>
-	public sealed record WipeIgnored : RunNote
-	{
-		public override bool Detail => true;
-	}
+	public sealed record WipeIgnored : Ignored;
 
 	/// <param name="WhileAway">It ended while the player was logged out, or before the plugin saw them back after starting</param>
 	public sealed record Ended(Run Run, bool WhileAway) : RunNote;
@@ -104,19 +98,6 @@ public enum FightEnd
 {
 	NobodyInCombat,
 	GameWipeMessage,
-}
-
-public enum WipeSource
-{
-	/// <summary>
-	/// Everyone in the party died during the same fight
-	/// </summary>
-	Party,
-
-	/// <summary>
-	/// The game's wipe message, when it resets the whole party
-	/// </summary>
-	GameMessage,
 }
 
 public enum DropReason
