@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-27
+
 ### Added
 
 - Each run records the party's deaths, alliance raids included, and the site shows them.
@@ -76,7 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A chat line when a run ends gives its number, duty and time, or why it wasn't logged (#2).
 - Runs that couldn't be uploaded are tried again, and ones that weren't can be deleted (#2).
 
-[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/lavaskin/mentor-roulette-plugin/compare/v1.1.0...v1.2.0
